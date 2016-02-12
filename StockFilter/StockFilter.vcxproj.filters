@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="ソース ファイル\3rdparty">
+      <UniqueIdentifier>{8d7e3fe5-26ec-4d5a-8789-8922c11a370b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\3rdparty\curl">
+      <UniqueIdentifier>{a2fe80f1-a7de-4129-bbe3-9360da0c83ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\3rdparty\curl\include">
+      <UniqueIdentifier>{395dc77c-0b62-4ab4-bd35-cb2b255f084d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\3rdparty\curl\include\curl">
+      <UniqueIdentifier>{1e8633f3-9617-46c3-abcd-91bfa1fcb5df}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="StockPrice.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\curl.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\curlbuild.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\curlrules.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\curlver.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\easy.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\mprintf.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\multi.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\stdcheaders.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\curl\include\curl\typecheck-gcc.h">
+      <Filter>ソース ファイル\3rdparty\curl\include\curl</Filter>
+    </ClInclude>
+    <ClInclude Include="StockGraph.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="StockFilter.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="StockFilterDlg.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="StockPrice.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="StockGraph.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="StockFilter.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="StockFilterDlg.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\StockFilter.ico">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="StockFilter.rc">
+      <Filter>リソース ファイル</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\StockFilter.rc2">
+      <Filter>リソース ファイル</Filter>
+    </None>
+  </ItemGroup>
+</Project>
