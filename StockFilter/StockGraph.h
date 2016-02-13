@@ -77,6 +77,7 @@ public:
 		defRgbGreen = RGB(32, 240, 230),
 		defRgbBlue = RGB(0, 0, 255),
 		defRgbWhite = RGB(255, 255, 255),
+		defRgbYellow = RGB(255, 255, 0),
 		defRgbBack	= RGB(0,0,0),
 		defRgbYAxis = RGB(160, 160, 160),
 		defRgbGraph = RGB(192, 0, 0),
@@ -107,12 +108,13 @@ public:
 protected:
 
 	CPen		m_penYAxis; 		// Y 軸描画用ペン
-	CPen		m_penSeparator;		// 上段、中段、下段の分割線
+	CPen		m_penWhite;		// 上段、中段、下段の分割線
 	CPen		m_penRed;
 	CPen		m_penGreen;
+	CPen		m_penBlue;
+	CPen		m_penYellow;
 	CPen		m_penMA[MA_LINE_MAX];
 	CPen		m_penMark;			// 赤い点線
-	CPen		m_penMarket;
 
 	CBrush		m_brushRed;
 	CBrush		m_brushGreen;
@@ -151,6 +153,7 @@ protected:
 	void DrawKLine(CDC* pDC);
 	void DrawMarketIndex(CDC* pDC, int market);
 	void DrawMovingAverages(CDC* pDC, int iLine);
+	void DrawMACD(CDC* pDC);
 	void DrawMark(CDC* pDC);
 	void DrawVolume(CDC* pDC);
 

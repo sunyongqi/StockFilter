@@ -47,6 +47,7 @@ public:
 	static bool LoadMarketIndices();
 	static void MA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal);
 	static void MA(long* pInput, long* pOutput, int nPeriod, int nDaysTotal);
+	static void EMA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal);
 
 protected:
 	long DATE[NUM_DAYS_MAX];
@@ -72,6 +73,7 @@ protected:
 	double DIF[NUM_DAYS_MAX];
 	double DEA[NUM_DAYS_MAX];
 	double MACD[NUM_DAYS_MAX];
+	//double MACD_SIGNAL[NUM_DAYS_MAX];
 
 	eMarket MARKET;
 

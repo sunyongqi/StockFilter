@@ -219,6 +219,7 @@ int CStockPrice::LoadStockData()
 	LoadPriceFile();
 
 	CalculateMA();
+	CalculateMACD();
 
 	return m_nDaysTotal;
 }
@@ -270,6 +271,17 @@ void CStockPrice::CalculateMA()
 	MA(VOLUME, VOLUME_MA60, 60, m_nDaysTotal);
 }
 
+void CStockPrice::CalculateMACD()
+{
+	EMA(CLOSE, EMA12, 12, m_nDaysTotal);
+	EMA(CLOSE, EMA26, 26, m_nDaysTotal);
+	for (int i = 0; i < m_nDaysTotal; i++)
+		DIF[i] = EMA12[i] - EMA26[i];
+	EMA(DIF, DEA, 9, m_nDaysTotal);
+	for (int i = 0; i < m_nDaysTotal; i++)
+		MACD[i] = (DIF[i] - DEA[i]) * 2;
+}
+
 void CStockPrice::MA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal)
 {
 	if (nDaysTotal <= 0 || nPeriod <= 0)
@@ -282,9 +294,9 @@ void CStockPrice::MA(double* pInput, double* pOutput, int nPeriod, int nDaysTota
 		{
 			if (iDay + iPeriod >= nDaysTotal)
 				break;
-			fSum += *(pInput + iDay + iPeriod);
+			fSum += pInput[iDay + iPeriod];
 		}
-		*(pOutput + iDay) = fSum / nPeriod;
+		pOutput[iDay] = fSum / nPeriod;
 	}
 }
 
@@ -300,8 +312,27 @@ void CStockPrice::MA(long* pInput, long* pOutput, int nPeriod, int nDaysTotal)
 		{
 			if (iDay + iPeriod >= nDaysTotal)
 				break;
-			nSum += *(pInput + iDay + iPeriod);
+			nSum += pInput[iDay + iPeriod];
 		}
-		*(pOutput + iDay) = nSum / nPeriod;
+		pOutput[iDay] = nSum / nPeriod;
+	}
+}
+
+void CStockPrice::EMA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal)
+{
+	if (nDaysTotal <= 0 || nPeriod <= 0)
+		return;
+
+	int nCount = (1 + nPeriod) * nPeriod / 2;
+	double fSum = 0;
+	for (int iPeriod = 1; iPeriod <= nPeriod; iPeriod++)
+	{
+		pOutput[nDaysTotal - iPeriod] = 0;
+		fSum += pInput[nDaysTotal - iPeriod] * (double)iPeriod;
+	}
+	pOutput[nDaysTotal - nPeriod] = fSum / (double)((1 + nPeriod) * nPeriod / 2);
+	for (int iDay = nDaysTotal - nPeriod - 1; iDay >= 0; iDay--)
+	{
+		pOutput[iDay] = (pOutput[iDay + 1] * ((double)nPeriod - 1.0) + pInput[iDay] * 2.0) / (double)(nPeriod + 1);
 	}
 }

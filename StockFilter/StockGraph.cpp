@@ -51,10 +51,11 @@ CStockGraph::CStockGraph()
 CStockGraph::~CStockGraph()
 {
 	m_penYAxis.DeleteObject();
-	m_penSeparator.DeleteObject();
+	m_penWhite.DeleteObject();
 	m_penRed.DeleteObject();
 	m_penGreen.DeleteObject();
-	m_penMarket.DeleteObject();
+	m_penBlue.DeleteObject();
+	m_penYellow.DeleteObject();
 	for (int iLine = 0; iLine < MA_LINE_MAX; iLine++)
 	{
 		m_penMA[iLine].DeleteObject();
@@ -74,10 +75,11 @@ CStockGraph::~CStockGraph()
 void CStockGraph::SetColor(COLORREF rgbBack, COLORREF rgbYAxis, COLORREF rgbGraph)
 {
 	m_penYAxis.DeleteObject();
-	m_penSeparator.DeleteObject();
+	m_penWhite.DeleteObject();
 	m_penRed.DeleteObject();
 	m_penGreen.DeleteObject();
-	m_penMarket.DeleteObject();
+	m_penBlue.DeleteObject();
+	m_penYellow.DeleteObject();
 	for (int iLine = 0; iLine < MA_LINE_MAX; iLine++)
 	{
 		m_penMA[iLine].DeleteObject();
@@ -86,10 +88,11 @@ void CStockGraph::SetColor(COLORREF rgbBack, COLORREF rgbYAxis, COLORREF rgbGrap
 	m_brushGreen.DeleteObject();
 
 	m_penYAxis.CreatePen(PS_DOT, 1, defRgbYAxis);
-	m_penSeparator.CreatePen(PS_SOLID, 2, defRgbWhite);
+	m_penWhite.CreatePen(PS_SOLID, 2, defRgbWhite);
 	m_penRed.CreatePen(PS_SOLID, 2, defRgbRed);
 	m_penGreen.CreatePen(PS_SOLID, 2, defRgbGreen);
-	m_penMarket.CreatePen(PS_SOLID, 1, defRgbBlue);
+	m_penBlue.CreatePen(PS_SOLID, 2, defRgbBlue);
+	m_penYellow.CreatePen(PS_SOLID, 2, defRgbYellow);
 	m_penMA[0].CreatePen(PS_SOLID, 1, defRgbLine1);
 	m_penMA[1].CreatePen(PS_SOLID, 1, defRgbLine2);
 	m_penMA[2].CreatePen(PS_SOLID, 1, defRgbLine3);
@@ -380,6 +383,7 @@ void CStockGraph::Draw(CDC* pDC)
 
 	DrawMarketIndex(pDC, m_pStockPrice->MARKET);
 	DrawKLine(pDC);
+	DrawMACD(pDC);
 	DrawVolume(pDC);
 	for (int iLine = 0; iLine < MA_LINE_MAX; iLine++)
 	{
@@ -399,7 +403,7 @@ void CStockGraph::DrawBackground(CDC* pDC)
 	//-----------------------------------------------------------------------
 	
 	// 2–{‚Ì•ªŠ„ü‚ð•`‰æ
-	CPen* pOldPen = pDC->SelectObject(&m_penSeparator);
+	CPen* pOldPen = pDC->SelectObject(&m_penWhite);
 	pDC->MoveTo(0, m_nHeightUpper + m_nYSpace * 3 / 2);
 	pDC->LineTo(m_nWidth, m_nHeightUpper + m_nYSpace * 3 / 2);
 	pDC->MoveTo(0, m_nHeightUpper + m_nHeightMiddle + m_nYSpace * 5 / 2);
@@ -440,6 +444,8 @@ void CStockGraph::DrawBackground(CDC* pDC)
 		else
 			pMarketIndex = MARKET_INDEX_SZ;
 		m_BottomUpperMarket = m_TopUpperMarket = pMarketIndex[0];
+		m_BottomMiddle = min(m_pStockPrice->DIF[0], m_pStockPrice->DEA[0]);
+		m_TopMiddle = max(m_pStockPrice->DIF[0], m_pStockPrice->DEA[0]);
 		m_BottomLower = m_TopLower = m_pStockPrice->VOLUME[0];
 		for (int i = 1; i < m_nNumDayDisplay; i++)
 		{
@@ -451,10 +457,19 @@ void CStockGraph::DrawBackground(CDC* pDC)
 				m_BottomUpper = m_pStockPrice->LOW[index];
 			if (m_TopUpper < m_pStockPrice->HIGH[index])
 				m_TopUpper = m_pStockPrice->HIGH[index];
+
 			if (m_BottomUpperMarket > pMarketIndex[index])
 				m_BottomUpperMarket = pMarketIndex[index];
 			if (m_TopUpperMarket < pMarketIndex[index])
 				m_TopUpperMarket = pMarketIndex[index];
+
+			double minMACD = min(m_pStockPrice->DIF[i], m_pStockPrice->DEA[index]);
+			double maxMACD = max(m_pStockPrice->DIF[i], m_pStockPrice->DEA[index]);
+			if (m_BottomMiddle > minMACD)
+				m_BottomMiddle = minMACD;
+			if (m_TopMiddle < maxMACD)
+				m_TopMiddle = maxMACD;
+
 			if (m_BottomLower > m_pStockPrice->VOLUME[index])
 				m_BottomLower = m_pStockPrice->VOLUME[index];
 			if (m_TopLower < m_pStockPrice->VOLUME[index])
@@ -578,7 +593,7 @@ void CStockGraph::DrawKLine(CDC* pDC)
 void CStockGraph::DrawMarketIndex(CDC* pDC, int market)
 {
 	ASSERT(m_nNumDayDisplay > 1);
-	CPen* pOldPen = pDC->SelectObject(&m_penMarket);
+	CPen* pOldPen = pDC->SelectObject(&m_penBlue);
 
 	if (m_BottomUpperMarket < m_TopUpperMarket)
 	{
@@ -622,6 +637,31 @@ void CStockGraph::DrawMovingAverages(CDC* pDC, int iLine)
 	}
 
 	pDC->SelectObject(pOldPen);
+}
+
+void CStockGraph::DrawMACD(CDC* pDC)
+{
+	ASSERT(m_nNumDayDisplay > 1);
+
+	if (m_BottomMiddle < m_TopMiddle)
+	{
+		CPen* pOldPen = pDC->SelectObject(&m_penWhite);
+		pDC->MoveTo(IndexToXPos(0), GetYPosMiddle(m_pStockPrice->DIF[0]));
+		for (int i = 1; i < m_nNumDayDisplay; i++)
+		{
+			int y = GetYPosMiddle(m_pStockPrice->DIF[m_nLastIndex + i]);
+			pDC->LineTo(IndexToXPos(i), GetYPosMiddle(m_pStockPrice->DIF[m_nLastIndex + i]));
+		}
+
+		pDC->SelectObject(&m_penYellow);
+		pDC->MoveTo(IndexToXPos(0), GetYPosMiddle(m_pStockPrice->DEA[0]));
+		for (int i = 1; i < m_nNumDayDisplay; i++)
+		{
+			int y = GetYPosMiddle(m_pStockPrice->DEA[m_nLastIndex + i]);
+			pDC->LineTo(IndexToXPos(i), GetYPosMiddle(m_pStockPrice->DEA[m_nLastIndex + i]));
+		}
+		pDC->SelectObject(pOldPen);
+	}
 }
 
 void CStockGraph::DrawMark(CDC* pDC)
@@ -713,7 +753,7 @@ int CStockGraph::GetYPosUpperMarket(double value)
 int CStockGraph::GetYPosMiddle(double value)
 {
 	ASSERT(m_TopMiddle - m_BottomMiddle != 0);
-	return (int)(m_nYSpace * 2 + m_nHeightUpper + (double)m_nHeightUpper * (1.0 - (value - m_BottomMiddle) / (m_TopMiddle - m_BottomMiddle)));
+	return (int)(m_nYSpace * 2 + m_nHeightUpper + (double)m_nHeightMiddle * (1.0 - (value - m_BottomMiddle) / (m_TopMiddle - m_BottomMiddle)));
 }
 
 int CStockGraph::GetYPosLower(long value)
