@@ -42,7 +42,7 @@ public:
 
 	BOOL InitStockList();
 	void UpdateScrollBar(int nPos, int nMax, int nPage);
-	BOOL DrawStockGraph(std::string strCode);
+	BOOL DrawStockGraph(CStockPrice* pStockPrice);
 	void UpdateDateText(int iLast, int nNum = NUM_LINE_DISPLAY);
 	CString m_strSearch;
 	CString m_strDate0;
@@ -59,4 +59,7 @@ public:
 	CString m_strStockName;
 	CString m_strStockCode;
 	afx_msg void OnBnClickedDownloadall();
+
+private:
+	CStockPrice* m_pStockPrice;
 };

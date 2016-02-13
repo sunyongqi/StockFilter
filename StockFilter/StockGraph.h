@@ -5,6 +5,8 @@
 #define NUM_LINE_DISPLAY	81
 #define MA_LINE_MAX			5
 
+class CStockPrice;
+
 typedef DWORD KPATTERN;
 
 typedef struct daySummary
@@ -73,6 +75,8 @@ public:
 		// 色設定
 		defRgbRed = RGB(240, 48, 48),
 		defRgbGreen = RGB(32, 240, 230),
+		defRgbBlue = RGB(0, 0, 255),
+		defRgbWhite = RGB(255, 255, 255),
 		defRgbBack	= RGB(0,0,0),
 		defRgbYAxis = RGB(160, 160, 160),
 		defRgbGraph = RGB(192, 0, 0),
@@ -83,15 +87,18 @@ public:
 		defRgbLine5 = RGB(222, 111, 5),
 	};
 
-	virtual void SetColor(COLORREF rgbBack, COLORREF rgbYAxis, COLORREF rgbGraph);
-	virtual void SetDateRange(int iLast, int nNum);
-	virtual void AnalyzeData(SUMMARY* pHistory, int nCount = 1);
-	virtual int PriceToYPos(double fPrice);
-	virtual int VolumeToYPos(long nVolume);
-	virtual int IndexToXPos(int nIndex);
-	virtual int FindCount(SUMMARY* pDate, int nPeriod);
-	virtual int FindNext(SUMMARY* pDate, int nPeriod);
-	virtual void SetMark(int iStart, int nCount);
+	void SetColor(COLORREF rgbBack, COLORREF rgbYAxis, COLORREF rgbGraph);
+	void SetDateRange(int iLast, int nNum);
+	//void AnalyzeData(SUMMARY* pHistory, int nCount = 1);
+	void SetStockPrice(CStockPrice* pStockPrice);
+	int GetYPosUpper(double value);
+	int GetYPosUpperMarket(double value);
+	int GetYPosMiddle(double value);
+	int GetYPosLower(long value);
+	int IndexToXPos(int nIndex);
+	int FindCount(SUMMARY* pDate, int nPeriod);
+	int FindNext(SUMMARY* pDate, int nPeriod);
+	void SetMark(int iStart, int nCount);
 
 	// オーバーライド
 	//{{AFX_VIRTUAL(CStockGraph)
@@ -100,57 +107,62 @@ public:
 protected:
 
 	CPen		m_penYAxis; 		// Y 軸描画用ペン
+	CPen		m_penSeparator;		// 上段、中段、下段の分割線
 	CPen		m_penRed;
 	CPen		m_penGreen;
 	CPen		m_penMA[MA_LINE_MAX];
 	CPen		m_penMark;			// 赤い点線
+	CPen		m_penMarket;
 
 	CBrush		m_brushRed;
 	CBrush		m_brushGreen;
 
-	COLORREF	m_rgbBack;			// 背景色
-	COLORREF	m_rgbYAxis; 		// Y 軸の色
-	COLORREF	m_rgbGraph; 		// 線の色
-
 	int 		m_nNumDayDisplay; 		// 画面上表示されるデータ数
 	int			m_nLastIndex;			// 画面上表示される最新のデータ（一番右の）
-	double		m_fLowPrice;			// 株価描画範囲の下限
-	double		m_fHighPrice;			// 株価描画範囲の上限
-	long		m_nLowVolume;			// 株価描画範囲の上限
-	long		m_nHighVolume;			// 株価描画範囲の上限
+	double		m_BottomUpper;			// 上段描画範囲の下限
+	double		m_TopUpper;				// 上段描画範囲の上限
+	double		m_BottomUpperMarket;			// 上段MarketIndex描画範囲の下限
+	double		m_TopUpperMarket;			// 上段MarketIndex描画範囲の上限
+	double		m_BottomMiddle;			// 中段描画範囲の下限
+	double		m_TopMiddle;			// 中段描画範囲の上限
+	long		m_BottomLower;			// 下段描画範囲の上限
+	long		m_TopLower;				// 下段描画範囲の上限
 	int			m_nWidth;
 	int			m_nHeight;
-	int			m_nHeightVolume;
-	int			m_nHeightPrice;
+	int			m_nHeightUpper;
+	int			m_nHeightMiddle;
+	int			m_nHeightLower;
 	int			m_nYSpace;
 	double		m_fPlotSpace;	// プロットの間隔
 	double		m_fMargin;
 	int			m_nMarkStart;
 	int			m_nMarkCount;
 
-	SUMMARY*	m_pHistory;
-	int			m_nDaysTotal;
+	//SUMMARY*	m_pHistory;
+	//int			m_nDaysTotal;
+	CStockPrice* m_pStockPrice;
 	std::multimap<KPATTERN, TREND> m_mapKPatternTrend;
 	int			m_nFindFrom;
 	//std::multimap<KPATTERN, TREND>::iterator m_mapIterator;
 	int			m_nAveragePeriod[MA_LINE_MAX];
 
-	virtual void Draw(CDC* pDC);
-	virtual void DrawBackground(CDC* pDC);
-	virtual void DrawKLine(CDC* pDC);
-	virtual void DrawMovingAverages(CDC* pDC, int iLine);
-	virtual void DrawMark(CDC* pDC);
-	virtual void DrawVolume(CDC* pDC);
+	void Draw(CDC* pDC);
+	void DrawBackground(CDC* pDC);
+	void DrawKLine(CDC* pDC);
+	void DrawMarketIndex(CDC* pDC, int market);
+	void DrawMovingAverages(CDC* pDC, int iLine);
+	void DrawMark(CDC* pDC);
+	void DrawVolume(CDC* pDC);
 
-	virtual void CalculateMovingAverages();
-	virtual void CalculateKLinePattern();
-	virtual void MakeKPatternMap();
-	virtual BYTE EncodeRateToTwoBit(double fChangeRate);
-	virtual BYTE EncodeOneDayToBYTE(SUMMARY* pData);
-	virtual KPATTERN EncodeKPattern(SUMMARY* pData, int nPeriod);
-	virtual ePriceChange GetClosePriceTrend(SUMMARY* pData, int nPeriod);
-	virtual ePriceChange GetVolumeTrend(SUMMARY* pData, int nPeriod);
-	virtual ePriceChange GetMA5Trend(SUMMARY* pData, int nPeriod);
+	void CalculateMovingAverages();
+	void CalculateKLinePattern();
+	void MakeKPatternMap();
+	BYTE EncodeRateToTwoBit(double fChangeRate);
+	BYTE EncodeOneDayToBYTE(SUMMARY* pData);
+	KPATTERN EncodeKPattern(SUMMARY* pData, int nPeriod);
+	ePriceChange GetClosePriceTrend(SUMMARY* pData, int nPeriod);
+	ePriceChange GetVolumeTrend(SUMMARY* pData, int nPeriod);
+	ePriceChange GetMA5Trend(SUMMARY* pData, int nPeriod);
 
 	// 生成されたメッセージ マップ関数
 	//{{AFX_MSG(CStockGraph)

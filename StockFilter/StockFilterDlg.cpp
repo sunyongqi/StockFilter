@@ -19,7 +19,7 @@
 //#endif
 
 #define NUM_DAYS_MAX		8000
-struct daySummary history[NUM_DAYS_MAX];
+//struct daySummary history[NUM_DAYS_MAX];
 std::map<std::wstring, std::wstring> g_mapCodeName;
 std::map<std::wstring, std::wstring> g_mapNameCode;
 
@@ -140,9 +140,12 @@ BOOL CStockFilterDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 大きいアイコンの設定
 	SetIcon(m_hIcon, FALSE);		// 小さいアイコンの設定
 
-	// TODO: 初期化をここに追加します。
-	//m_strStockInput = _T("000877.sz");
-	m_strStockInput = _T("上证指数");
+	// T1ODO: 初期化をここに追加します。
+	if (!CStockPrice::LoadMarketIndices())
+		return TRUE;
+
+	m_pStockPrice = NULL;
+	m_strStockInput = _T("600881");
 	UpdateData(FALSE);
 
 	g_mapCodeName.clear();
@@ -154,7 +157,7 @@ BOOL CStockFilterDlg::OnInitDialog()
 	if (!filestream.is_open())
 	{
 		// ファイルが開けなかった場合は終了する
-		return false;
+		return TRUE;
 	}
 
 	const std::locale empty_locale = std::locale::empty();
@@ -178,10 +181,10 @@ BOOL CStockFilterDlg::OnInitDialog()
 				if (strCode.front() == L'\"')
 					strCode.erase(0, 1);	// なぜか1行目だけ2文字削除しないといけない
 
-				if (strCode.front() == '6')
-					strCode += L".ss";
-				else
-					strCode += L".sz";
+				//if (strCode.front() == '6')
+				//	strCode += L".ss";
+				//else
+				//	strCode += L".sz";
 
 				g_mapCodeName.insert(std::make_pair(strCode, strName));
 				g_mapNameCode.insert(std::make_pair(strName, strCode));
@@ -251,24 +254,36 @@ void CStockFilterDlg::OnBnClickedGetprice()
 	UpdateData(TRUE);
 
 	std::string strCode;
-	CStockPrice stockPrice;
-	// 特殊パターン
-	if (m_strStockInput.Left(2) == L"上证")
-	{
-		strCode = "000001.ss";
-	}
-	else if (m_strStockInput.Left(2) == L"深证")
-	{
-		strCode = "399001.sz";
-	}
-	// 通常の株
-	else
-	{
+	//// 特殊パターン
+	//if (m_strStockInput.Left(2) == L"上证")
+	//{
+	//	strCode = "000001.ss";
+	//	market = SHANGHAI;
+	//}
+	//else if (m_strStockInput.Left(2) == L"深证")
+	//{
+	//	strCode = "399001.sz";
+	//	market = SHENZHEN;
+	//}
+	//// 通常の株
+	//else
+	//{
 		std::wstring wsInput = m_strStockInput;
 		std::wstring wsCode = L"";
 		CString strFirst = m_strStockInput.Left(1);
 		if (strFirst >= L"0" && strFirst <= L"9")
 		{
+			//if (wsInput.front() == L'6')
+			//{
+			//	wsInput += L".ss";
+			//	market = SHANGHAI;
+			//}
+			//else
+			//{
+			//	wsInput += L".sz";
+			//	market = SHENZHEN;
+			//}
+
 			auto it = g_mapCodeName.find(wsInput);
 			if (it != g_mapCodeName.end())
 			{
@@ -298,63 +313,45 @@ void CStockFilterDlg::OnBnClickedGetprice()
 		
 		CStringA strA(wsCode.c_str());
 		strCode = (LPCSTR)strA;
-	}
+	//}
 	UpdateData(FALSE);
+
+	if (!m_pStockPrice)
+		delete m_pStockPrice;
+
+	m_pStockPrice = new CStockPrice(strCode);
+	//m_pStockPrice->LoadStockData();
 	//stockPrice.DownloadSingleStockPrices(strCode);
 
-	DrawStockGraph(strCode);
+	DrawStockGraph(m_pStockPrice);
 }
 
-BOOL CStockFilterDlg::DrawStockGraph(std::string strCode)
+BOOL CStockFilterDlg::DrawStockGraph(CStockPrice* pStockPrice)
 {
-	std::string strFileName = PRICEFILE_PATH;
-	strFileName += strCode;
-	strFileName += ".csv";
-	FILE* fp = NULL;
-	if (fopen_s(&fp, strFileName.c_str(), "r"))
-		return FALSE;
-
-	char cYear[16], cMonth[16], cDay[16], cOpen[16], cHigh[16], cLow[16], cClose[16], cVolume[16], cAdjClose[16];
-
-	char temp[256];
-	fgets(temp, 256, fp);
-	int i;
-	for (i = 0; i < NUM_DAYS_MAX; i++) {
-		cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
-		if (fscanf_s(fp, "%[^-]-%[^-]-%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cOpen, 16, cHigh, 16, cLow, 16, cClose, 16, cVolume, 16, cAdjClose, 16) == EOF)
-			break;
-		history[i].date = strtol(cYear, NULL, 10) * 10000 + strtol(cMonth, NULL, 10) * 100 + strtol(cDay, NULL, 10);
-		history[i].open = strtod(cOpen, NULL);
-		history[i].high = strtod(cHigh, NULL);
-		history[i].low = strtod(cLow, NULL);
-		history[i].close = strtod(cClose, NULL);
-		history[i].volume = strtol(cVolume, NULL, 10);
-		history[i].adjClose = strtod(cAdjClose, NULL);
-	}
-	fclose(fp);
-
+	//CStockPrice* pStockPrice = new CStockPrice(strCode);
+	int nDays = pStockPrice->LoadStockData();
 	
-	UpdateScrollBar(i, i, NUM_LINE_DISPLAY);
+	UpdateScrollBar(nDays, nDays, NUM_LINE_DISPLAY);
 	UpdateDateText(0, NUM_LINE_DISPLAY);
 	
 
 	m_StockGraph.SetDateRange(0, NUM_LINE_DISPLAY);
-	m_StockGraph.AnalyzeData(history, i);
+	m_StockGraph.SetStockPrice(m_pStockPrice);
 	m_StockGraph.RedrawWindow();
 	return TRUE;
 }
 
 void CStockFilterDlg::UpdateDateText(int iLast, int nNum)
 {
-	m_strDate0.Format(_T("%d"), history[iLast].date);
-	m_strDate1.Format(_T("%d"), history[iLast + nNum * 1 / 8].date);
-	m_strDate2.Format(_T("%d"), history[iLast + nNum * 2 / 8].date);
-	m_strDate3.Format(_T("%d"), history[iLast + nNum * 3 / 8].date);
-	m_strDate4.Format(_T("%d"), history[iLast + nNum * 4 / 8].date);
-	m_strDate5.Format(_T("%d"), history[iLast + nNum * 5 / 8].date);
-	m_strDate6.Format(_T("%d"), history[iLast + nNum * 6 / 8].date);
-	m_strDate7.Format(_T("%d"), history[iLast + nNum * 7 / 8].date);
-	m_strDate8.Format(_T("%d"), history[iLast + nNum].date);
+	m_strDate0.Format(_T("%d"), m_pStockPrice->DATE[iLast]);
+	m_strDate1.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 1 / 8]);
+	m_strDate2.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 2 / 8]);
+	m_strDate3.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 3 / 8]);
+	m_strDate4.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 4 / 8]);
+	m_strDate5.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 5 / 8]);
+	m_strDate6.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 6 / 8]);
+	m_strDate7.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum * 7 / 8]);
+	m_strDate8.Format(_T("%d"), m_pStockPrice->DATE[iLast + nNum]);
 	UpdateData(FALSE);
 }
 
