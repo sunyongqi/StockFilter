@@ -220,6 +220,7 @@ int CStockPrice::LoadStockData()
 
 	CalculateMA();
 	CalculateMACD();
+	CalculateSOM();
 
 	return m_nDaysTotal;
 }
@@ -282,6 +283,27 @@ void CStockPrice::CalculateMACD()
 		MACD[i] = (DIF[i] - DEA[i]) * 2;
 }
 
+void CStockPrice::CalculateKDJ()
+{
+
+}
+
+void CStockPrice::CalculateRSI()
+{
+
+}
+
+void CStockPrice::CalculateSOM()
+{
+	double* pMarketIndex = NULL;
+	if (MARKET == SHANGHAI)
+		pMarketIndex = MARKET_INDEX_SS;
+	else
+		pMarketIndex = MARKET_INDEX_SZ;
+	for (int i = 0; i < m_nDaysTotal; i++)
+		SOM[i] = CLOSE[i] / pMarketIndex[i] * 100;
+}
+
 void CStockPrice::MA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal)
 {
 	if (nDaysTotal <= 0 || nPeriod <= 0)
@@ -335,4 +357,36 @@ void CStockPrice::EMA(double* pInput, double* pOutput, int nPeriod, int nDaysTot
 	{
 		pOutput[iDay] = (pOutput[iDay + 1] * ((double)nPeriod - 1.0) + pInput[iDay] * 2.0) / (double)(nPeriod + 1);
 	}
+}
+
+int CStockPrice::GoldenCross(double* pInputFast, double* pInputSlow, int iStart, int iEnd, double threshold)
+{
+	ASSERT(iEnd > iStart);
+
+	for (int i = iStart; i < iEnd; i++)
+	{
+		double d0 = pInputSlow[i] - pInputFast[i];
+		double d1 = pInputSlow[i + 1] - pInputFast[i + 1];
+		double d2 = pInputSlow[i + 2] - pInputFast[i + 2];
+		if (d0 <= 0 && d1 >= threshold && d2 >= threshold && d2 > d1)
+		//if (pInputFast[i] - pInputSlow[i] >= 0 && 
+		//	pInputSlow[i + 1] - pInputFast[i + 1] >= threshold &&
+		//	pInputSlow[i + 2] - pInputFast[i + 2] >= threshold * 2)
+		//if (pInputFast[i] >= pInputSlow[i] && pInputFast[i + 1] < pInputSlow[i + 1])
+			return i;
+	}
+	return -1;
+}
+
+int CStockPrice::DeathCross(double* pInputFast, double* pInputSlow, int iStart, int iEnd, double threshold)
+{
+	if (iEnd <= iStart)
+		return -1;
+
+	for (int i = iStart; i < iEnd; i++)
+	{
+		if (pInputFast[i] <= pInputSlow[i] && pInputFast[i + 1] > pInputSlow[i + 1])
+			return i;
+	}
+	return -1;
 }

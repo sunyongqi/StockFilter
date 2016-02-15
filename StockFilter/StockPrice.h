@@ -5,6 +5,8 @@
 #define PRICEFILE_PATH "StockData\\"
 #define NUM_DAYS_MAX		8000
 
+#define CROSS_THRESHOLD 0.005
+
 //typedef enum
 //{
 //	OPEN = 0,
@@ -40,6 +42,9 @@ public:
 	bool LoadPriceFile();
 	void CalculateMA();
 	void CalculateMACD();
+	void CalculateKDJ();
+	void CalculateRSI();
+	void CalculateSOM();
 
 	int GetDaysTotal() { return m_nDaysTotal; };
 
@@ -48,6 +53,8 @@ public:
 	static void MA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal);
 	static void MA(long* pInput, long* pOutput, int nPeriod, int nDaysTotal);
 	static void EMA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal);
+	static int GoldenCross(double* pInputFast, double* pInputSlow, int iStart, int iEnd, double threshold = CROSS_THRESHOLD);
+	static int DeathCross(double* pInputFast, double* pInputSlow, int iStart, int iEnd, double threshold = CROSS_THRESHOLD);
 
 protected:
 	long DATE[NUM_DAYS_MAX];
@@ -73,7 +80,7 @@ protected:
 	double DIF[NUM_DAYS_MAX];
 	double DEA[NUM_DAYS_MAX];
 	double MACD[NUM_DAYS_MAX];
-	//double MACD_SIGNAL[NUM_DAYS_MAX];
+	double SOM[NUM_DAYS_MAX];	// StockPrice Over MarketIndex
 
 	eMarket MARKET;
 

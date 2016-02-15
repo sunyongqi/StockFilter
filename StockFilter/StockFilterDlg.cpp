@@ -74,6 +74,8 @@ CStockFilterDlg::CStockFilterDlg(CWnd* pParent /*=NULL*/)
 	, m_strDate8(_T(""))
 	, m_strStockName(_T(""))
 	, m_strStockCode(_T(""))
+	, m_nGraphType(0)
+	, m_nIndicator(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -95,6 +97,8 @@ void CStockFilterDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_STATIC_DATE8, m_strDate8);
 	DDX_Text(pDX, IDC_STOCKNAME, m_strStockName);
 	DDX_Text(pDX, IDC_STOCKCODE, m_strStockCode);
+	DDX_Radio(pDX, IDC_RADIO1, m_nGraphType);
+	DDX_Radio(pDX, IDC_RADIO4, m_nIndicator);
 }
 
 BEGIN_MESSAGE_MAP(CStockFilterDlg, CDialogEx)
@@ -106,6 +110,7 @@ BEGIN_MESSAGE_MAP(CStockFilterDlg, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT1, &CStockFilterDlg::OnEnChangeEdit1)
 	ON_BN_CLICKED(IDC_FINDPATTERN, &CStockFilterDlg::OnBnClickedFindpattern)
 	ON_BN_CLICKED(IDC_DOWNLOADALL, &CStockFilterDlg::OnBnClickedDownloadall)
+	ON_CONTROL_RANGE(BN_CLICKED, IDC_RADIO1, IDC_RADIO7, &CStockFilterDlg::OnBnClickedRadioGraph)
 END_MESSAGE_MAP()
 
 
@@ -145,6 +150,7 @@ BOOL CStockFilterDlg::OnInitDialog()
 		return TRUE;
 
 	m_pStockPrice = NULL;
+	m_iFound = -1;
 	m_strStockInput = _T("600881");
 	UpdateData(FALSE);
 
@@ -253,6 +259,7 @@ void CStockFilterDlg::OnBnClickedGetprice()
 {
 	UpdateData(TRUE);
 
+	m_iFound = -1;
 	std::string strCode;
 	//// 特殊パターン
 	//if (m_strStockInput.Left(2) == L"上证")
@@ -423,6 +430,22 @@ void CStockFilterDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 
 void CStockFilterDlg::OnBnClickedFindpattern()
 {
+	if (!m_pStockPrice)
+		return;
+
+
+	m_iFound = CStockPrice::GoldenCross(m_pStockPrice->DIF, m_pStockPrice->DEA, m_iFound + 1, 1000);
+	if (m_iFound < 0)
+	{
+		AfxMessageBox(_T("Not Found!"));
+		return;
+	}
+
+	//m_StockGraph.SetDateRange(m_iFound, NUM_LINE_DISPLAY);	// 一番右の位置を0とする
+	m_StockGraph.SetDateRange(max(m_iFound - (int)(NUM_LINE_DISPLAY / 2.0), 0), NUM_LINE_DISPLAY);	// 見つかったパターンを真ん中に置く
+	m_StockGraph.SetMark(m_iFound, 2);
+	m_StockGraph.RedrawWindow();
+	UpdateDateText(m_iFound, NUM_LINE_DISPLAY);
 	//SUMMARY data[4];
 	//data[0].open = 90;
 	//data[0].high = 96;
@@ -479,4 +502,12 @@ void CStockFilterDlg::OnBnClickedDownloadall()
 {
 	CStockPrice stockPrice;
 	stockPrice.DownloadAllStocksPrices();
+}
+
+
+void CStockFilterDlg::OnBnClickedRadioGraph(UINT nID)
+{
+	UpdateData(TRUE);
+	m_StockGraph.SetDrawMode(m_nGraphType, m_nIndicator);
+	m_StockGraph.RedrawWindow();
 }

@@ -62,4 +62,10 @@ public:
 
 private:
 	CStockPrice* m_pStockPrice;
+
+	int m_iFound;
+public:
+	int m_nGraphType;
+	int m_nIndicator;
+	afx_msg void OnBnClickedRadioGraph(UINT nID);
 };

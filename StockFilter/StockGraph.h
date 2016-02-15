@@ -9,6 +9,21 @@ class CStockPrice;
 
 typedef DWORD KPATTERN;
 
+typedef enum
+{
+	gtRealtime	= 0,
+	gtDay		= 1,
+	gtWeek		= 2,
+} eGraphType;
+
+typedef enum
+{
+	siMACD		= 0,
+	siKDJ		= 1,
+	siRSI		= 2,
+	siSOM		= 3,
+} eStockIndicator;
+
 typedef struct daySummary
 {
 	long date;
@@ -90,6 +105,7 @@ public:
 
 	void SetColor(COLORREF rgbBack, COLORREF rgbYAxis, COLORREF rgbGraph);
 	void SetDateRange(int iLast, int nNum);
+	void CalculateDataRange();
 	//void AnalyzeData(SUMMARY* pHistory, int nCount = 1);
 	void SetStockPrice(CStockPrice* pStockPrice);
 	int GetYPosUpper(double value);
@@ -100,12 +116,13 @@ public:
 	int FindCount(SUMMARY* pDate, int nPeriod);
 	int FindNext(SUMMARY* pDate, int nPeriod);
 	void SetMark(int iStart, int nCount);
+	void SetDrawMode(int nType, int nIndicator);
 
 	// オーバーライド
 	//{{AFX_VIRTUAL(CStockGraph)
 	//}}AFX_VIRTUAL
 
-protected:
+private:
 
 	CPen		m_penYAxis; 		// Y 軸描画用ペン
 	CPen		m_penWhite;		// 上段、中段、下段の分割線
@@ -139,6 +156,8 @@ protected:
 	double		m_fMargin;
 	int			m_nMarkStart;
 	int			m_nMarkCount;
+	int			m_nGraphType;
+	int			m_nIndicator;
 
 	//SUMMARY*	m_pHistory;
 	//int			m_nDaysTotal;
@@ -154,6 +173,7 @@ protected:
 	void DrawMarketIndex(CDC* pDC, int market);
 	void DrawMovingAverages(CDC* pDC, int iLine);
 	void DrawMACD(CDC* pDC);
+	void DrawSOM(CDC* pDC);
 	void DrawMark(CDC* pDC);
 	void DrawVolume(CDC* pDC);
 
