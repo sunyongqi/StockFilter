@@ -99,6 +99,7 @@ void CStockFilterDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_STOCKCODE, m_strStockCode);
 	DDX_Radio(pDX, IDC_RADIO1, m_nGraphType);
 	DDX_Radio(pDX, IDC_RADIO4, m_nIndicator);
+	DDX_Control(pDX, IDC_STOCKLIST, m_cStockList);
 }
 
 BEGIN_MESSAGE_MAP(CStockFilterDlg, CDialogEx)
@@ -111,6 +112,7 @@ BEGIN_MESSAGE_MAP(CStockFilterDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_FINDPATTERN, &CStockFilterDlg::OnBnClickedFindpattern)
 	ON_BN_CLICKED(IDC_DOWNLOADALL, &CStockFilterDlg::OnBnClickedDownloadall)
 	ON_CONTROL_RANGE(BN_CLICKED, IDC_RADIO1, IDC_RADIO7, &CStockFilterDlg::OnBnClickedRadioGraph)
+	ON_LBN_SELCHANGE(IDC_STOCKLIST, &CStockFilterDlg::OnLbnSelchangeStocklist)
 END_MESSAGE_MAP()
 
 
@@ -259,78 +261,57 @@ void CStockFilterDlg::OnBnClickedGetprice()
 {
 	UpdateData(TRUE);
 
-	m_iFound = -1;
-	std::string strCode;
-	//// 特殊パターン
-	//if (m_strStockInput.Left(2) == L"上证")
-	//{
-	//	strCode = "000001.ss";
-	//	market = SHANGHAI;
-	//}
-	//else if (m_strStockInput.Left(2) == L"深证")
-	//{
-	//	strCode = "399001.sz";
-	//	market = SHENZHEN;
-	//}
-	//// 通常の株
-	//else
-	//{
-		std::wstring wsInput = m_strStockInput;
-		std::wstring wsCode = L"";
-		CString strFirst = m_strStockInput.Left(1);
-		if (strFirst >= L"0" && strFirst <= L"9")
-		{
-			//if (wsInput.front() == L'6')
-			//{
-			//	wsInput += L".ss";
-			//	market = SHANGHAI;
-			//}
-			//else
-			//{
-			//	wsInput += L".sz";
-			//	market = SHENZHEN;
-			//}
-
-			auto it = g_mapCodeName.find(wsInput);
-			if (it != g_mapCodeName.end())
-			{
-				wsCode = it->first;
-				m_strStockCode = wsCode.c_str();
-				m_strStockName = it->second.c_str();
-			}
-			else
-			{
-				wsCode = wsInput;
-			}
-		}
-		else
-		{
-			auto it = g_mapNameCode.find(wsInput);
-			if (it != g_mapNameCode.end())
-			{
-				wsCode = it->second;
-				m_strStockCode = wsCode.c_str();
-				m_strStockName = it->first.c_str();
-			}
-			else
-			{
-				return;
-			}
-		}
-		
-		CStringA strA(wsCode.c_str());
-		strCode = (LPCSTR)strA;
-	//}
-	UpdateData(FALSE);
-
 	if (!m_pStockPrice)
 		delete m_pStockPrice;
 
-	m_pStockPrice = new CStockPrice(strCode);
-	//m_pStockPrice->LoadStockData();
-	//stockPrice.DownloadSingleStockPrices(strCode);
-
+	m_pStockPrice = GetStockPrice(m_strStockInput);
 	DrawStockGraph(m_pStockPrice);
+}
+
+CStockPrice* CStockFilterDlg::GetStockPrice(CString strInput)
+{
+	m_iFound = -1;
+	std::string strCode;
+	std::wstring wsInput = strInput;
+	std::wstring wsCode = L"";
+	CString strFirst = m_strStockInput.Left(1);
+	if (strFirst >= L"0" && strFirst <= L"9")
+	{
+		auto it = g_mapCodeName.find(wsInput);
+		if (it != g_mapCodeName.end())
+		{
+			wsCode = it->first;
+			m_strStockCode = wsCode.c_str();
+			m_strStockName = it->second.c_str();
+		}
+		else
+		{
+			wsCode = wsInput;
+		}
+	}
+	else
+	{
+		auto it = g_mapNameCode.find(wsInput);
+		if (it != g_mapNameCode.end())
+		{
+			wsCode = it->second;
+			m_strStockCode = wsCode.c_str();
+			m_strStockName = it->first.c_str();
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+
+	CStringA strA(wsCode.c_str());
+	strCode = (LPCSTR)strA;
+
+	UpdateData(FALSE);
+
+	CStockPrice* pStockPrice = new CStockPrice(strCode);
+	//pStockPrice->DownloadSingleStockPrices(strCode);
+	return pStockPrice;
 }
 
 BOOL CStockFilterDlg::DrawStockGraph(CStockPrice* pStockPrice)
@@ -430,22 +411,34 @@ void CStockFilterDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 
 void CStockFilterDlg::OnBnClickedFindpattern()
 {
-	if (!m_pStockPrice)
-		return;
-
-
-	m_iFound = CStockPrice::GoldenCross(m_pStockPrice->DIF, m_pStockPrice->DEA, m_iFound + 1, 1000);
-	if (m_iFound < 0)
+	std::map<std::wstring, std::wstring>::iterator it = g_mapCodeName.begin();
+	int i = 0;
+	while (it != g_mapCodeName.end())
 	{
-		AfxMessageBox(_T("Not Found!"));
-		return;
+		std::wstring wstr = it->first;
+		m_cStockList.InsertString(-1, wstr.c_str());
+		it++;
+		if (i++ > 10)
+			break;
 	}
 
-	//m_StockGraph.SetDateRange(m_iFound, NUM_LINE_DISPLAY);	// 一番右の位置を0とする
-	m_StockGraph.SetDateRange(max(m_iFound - (int)(NUM_LINE_DISPLAY / 2.0), 0), NUM_LINE_DISPLAY);	// 見つかったパターンを真ん中に置く
-	m_StockGraph.SetMark(m_iFound, 2);
-	m_StockGraph.RedrawWindow();
-	UpdateDateText(m_iFound, NUM_LINE_DISPLAY);
+	//if (!m_pStockPrice)
+	//	return;
+
+
+	//m_iFound = CStockPrice::GoldenCross(m_pStockPrice->DIF, m_pStockPrice->DEA, m_iFound + 1, 1000);
+	//if (m_iFound < 0)
+	//{
+	//	AfxMessageBox(_T("Not Found!"));
+	//	return;
+	//}
+
+	////m_StockGraph.SetDateRange(m_iFound, NUM_LINE_DISPLAY);	// 一番右の位置を0とする
+	//m_StockGraph.SetDateRange(max(m_iFound - (int)(NUM_LINE_DISPLAY / 2.0), 0), NUM_LINE_DISPLAY);	// 見つかったパターンを真ん中に置く
+	//m_StockGraph.SetMark(m_iFound, 2);
+	//m_StockGraph.RedrawWindow();
+	//UpdateDateText(m_iFound, NUM_LINE_DISPLAY);
+
 	//SUMMARY data[4];
 	//data[0].open = 90;
 	//data[0].high = 96;
@@ -510,4 +503,16 @@ void CStockFilterDlg::OnBnClickedRadioGraph(UINT nID)
 	UpdateData(TRUE);
 	m_StockGraph.SetDrawMode(m_nGraphType, m_nIndicator);
 	m_StockGraph.RedrawWindow();
+}
+
+
+void CStockFilterDlg::OnLbnSelchangeStocklist()
+{
+	if (!m_pStockPrice)
+		delete m_pStockPrice;
+
+	CString strInput;
+	m_cStockList.GetText(m_cStockList.GetCurSel(), strInput);
+	m_pStockPrice = GetStockPrice(strInput);
+	DrawStockGraph(m_pStockPrice);
 }
