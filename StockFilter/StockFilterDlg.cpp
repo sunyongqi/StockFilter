@@ -74,10 +74,18 @@ CStockFilterDlg::CStockFilterDlg(CWnd* pParent /*=NULL*/)
 	, m_strDate8(_T(""))
 	, m_strStockName(_T(""))
 	, m_strStockCode(_T(""))
-	, m_nGraphType(0)
+	, m_nGraphPeriod(0)
 	, m_nIndicator(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+}
+
+CStockFilterDlg::~CStockFilterDlg()
+{
+	g_mapCodeName.clear();
+	g_mapNameCode.clear();
+	if (m_pStockPrice)
+		delete m_pStockPrice;
 }
 
 void CStockFilterDlg::DoDataExchange(CDataExchange* pDX)
@@ -97,7 +105,7 @@ void CStockFilterDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_STATIC_DATE8, m_strDate8);
 	DDX_Text(pDX, IDC_STOCKNAME, m_strStockName);
 	DDX_Text(pDX, IDC_STOCKCODE, m_strStockCode);
-	DDX_Radio(pDX, IDC_RADIO1, m_nGraphType);
+	DDX_Radio(pDX, IDC_RADIO1, m_nGraphPeriod);
 	DDX_Radio(pDX, IDC_RADIO4, m_nIndicator);
 	DDX_Control(pDX, IDC_STOCKLIST, m_cStockList);
 }
@@ -501,7 +509,7 @@ void CStockFilterDlg::OnBnClickedDownloadall()
 void CStockFilterDlg::OnBnClickedRadioGraph(UINT nID)
 {
 	UpdateData(TRUE);
-	m_StockGraph.SetDrawMode(m_nGraphType, m_nIndicator);
+	m_StockGraph.SetDrawMode((eGraphPeriod)m_nGraphPeriod, (eStockIndicator)m_nIndicator);
 	m_StockGraph.RedrawWindow();
 }
 

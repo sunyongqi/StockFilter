@@ -220,6 +220,8 @@ int CStockPrice::LoadStockData()
 
 	CalculateMA();
 	CalculateMACD();
+	CalculateKDJ(9);
+	CalculateRSI(6);
 	CalculateSOM();
 
 	return m_nDaysTotal;
@@ -248,7 +250,7 @@ bool CStockPrice::LoadPriceFile()
 		HIGH[i] = strtod(cHigh, NULL);
 		LOW[i] = strtod(cLow, NULL);
 		CLOSE[i] = strtod(cClose, NULL);
-		VOLUME[i] = strtol(cVolume, NULL, 10);
+		VOLUME[i] = strtod(cVolume, NULL);
 		ADJCLOSE[i] = strtod(cAdjClose, NULL);
 	}
 	fclose(fp);
@@ -283,36 +285,101 @@ void CStockPrice::CalculateMACD()
 		MACD[i] = (DIF[i] - DEA[i]) * 2;
 }
 
-void CStockPrice::CalculateKDJ()
+void CStockPrice::CalculateKDJ(unsigned int nPeriod)
 {
-
+	K[m_nDaysTotal - nPeriod] = D[m_nDaysTotal - nPeriod] = 50;
+	for (int i = m_nDaysTotal - nPeriod - 1; i >= 0; i--)
+	{
+		double Ln = MIN(LOW, i, i + nPeriod - 1, m_nDaysTotal);
+		double Hn = MAX(HIGH, i, i + nPeriod - 1, m_nDaysTotal);
+		if (Ln != Hn)
+		{
+			double RSVi = (CLOSE[i] - Ln) / (Hn - Ln) * 100.0;
+			K[i] = K[i + 1] * 2.0 / 3.0 + RSVi / 3.0;
+		}
+		else
+		{
+			K[i] = K[i + 1];
+		}
+		D[i] = D[i + 1] * 2.0 / 3.0 + K[i] / 3.0;
+		J[i] = K[i] * 3 - D[i] * 2;
+	}
 }
 
-void CStockPrice::CalculateRSI()
+void CStockPrice::CalculateRSI(unsigned int nPeriod)
 {
-
+	for (int i = 0; i < m_nDaysTotal; i++)
+	{
+		double RSi = 0;
+		double sumRise = 0;
+		double sumRiseFall = 0;
+		for (int j = 0; j < nPeriod - 1; j++)
+		{
+			double diff = CLOSE[i + j] - CLOSE[i + j + 1];
+			if (diff > 0)
+				sumRise += diff;
+			sumRiseFall += abs(diff);
+		}
+		if (sumRiseFall > 0)
+			RSI[i] = 100 * sumRise / sumRiseFall;
+		else
+			RSI[i] = 50;
+		//RSI[i] = 100.0 * RSi / (1 + RSi);
+	}
 }
 
 void CStockPrice::CalculateSOM()
+{
+	double* pMarketIndex = GetMarketIndex();
+	for (int i = 0; i < m_nDaysTotal; i++)
+		SOM[i] = CLOSE[i] / pMarketIndex[i] * 100;
+}
+
+double* CStockPrice::GetMarketIndex()
 {
 	double* pMarketIndex = NULL;
 	if (MARKET == SHANGHAI)
 		pMarketIndex = MARKET_INDEX_SS;
 	else
 		pMarketIndex = MARKET_INDEX_SZ;
-	for (int i = 0; i < m_nDaysTotal; i++)
-		SOM[i] = CLOSE[i] / pMarketIndex[i] * 100;
+	return pMarketIndex;
 }
 
-void CStockPrice::MA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal)
+double CStockPrice::MAX(double* pInput, unsigned int iStart, unsigned int iEnd, unsigned int nDaysTotal)
+{
+	ASSERT(iEnd < nDaysTotal);
+	ASSERT(iEnd >= iStart);
+	double max = pInput[iStart];
+	for (unsigned int i = iStart + 1; i <= iEnd; i++)
+	{
+		if (max < pInput[i])
+			max = pInput[i];
+	}
+	return max;
+}
+
+double CStockPrice::MIN(double* pInput, unsigned int iStart, unsigned int iEnd, unsigned int nDaysTotal)
+{
+	ASSERT(iEnd < nDaysTotal);
+	ASSERT(iEnd >= iStart);
+	double min = pInput[iStart];
+	for (unsigned int i = iStart + 1; i <= iEnd; i++)
+	{
+		if (min > pInput[i])
+			min = pInput[i];
+	}
+	return min;
+}
+
+void CStockPrice::MA(double* pInput, double* pOutput, unsigned int nPeriod, unsigned int nDaysTotal)
 {
 	if (nDaysTotal <= 0 || nPeriod <= 0)
 		return;
 
-	for (int iDay = 0; iDay < nDaysTotal; iDay++)
+	for (unsigned int iDay = 0; iDay < nDaysTotal; iDay++)
 	{
 		double fSum = 0;
-		for (int iPeriod = 0; iPeriod < nPeriod; iPeriod++)
+		for (unsigned int iPeriod = 0; iPeriod < nPeriod; iPeriod++)
 		{
 			if (iDay + iPeriod >= nDaysTotal)
 				break;
@@ -322,15 +389,15 @@ void CStockPrice::MA(double* pInput, double* pOutput, int nPeriod, int nDaysTota
 	}
 }
 
-void CStockPrice::MA(long* pInput, long* pOutput, int nPeriod, int nDaysTotal)
+void CStockPrice::MA(long* pInput, long* pOutput, unsigned int nPeriod, unsigned int nDaysTotal)
 {
 	if (nDaysTotal <= 0 || nPeriod <= 0)
 		return;
 
-	for (int iDay = 0; iDay < nDaysTotal; iDay++)
+	for (unsigned int iDay = 0; iDay < nDaysTotal; iDay++)
 	{
 		long nSum = 0;
-		for (int iPeriod = 0; iPeriod < nPeriod; iPeriod++)
+		for (unsigned int iPeriod = 0; iPeriod < nPeriod; iPeriod++)
 		{
 			if (iDay + iPeriod >= nDaysTotal)
 				break;
@@ -340,14 +407,14 @@ void CStockPrice::MA(long* pInput, long* pOutput, int nPeriod, int nDaysTotal)
 	}
 }
 
-void CStockPrice::EMA(double* pInput, double* pOutput, int nPeriod, int nDaysTotal)
+void CStockPrice::EMA(double* pInput, double* pOutput, unsigned int nPeriod, unsigned int nDaysTotal)
 {
 	if (nDaysTotal <= 0 || nPeriod <= 0)
 		return;
 
 	int nCount = (1 + nPeriod) * nPeriod / 2;
 	double fSum = 0;
-	for (int iPeriod = 1; iPeriod <= nPeriod; iPeriod++)
+	for (unsigned int iPeriod = 1; iPeriod <= nPeriod; iPeriod++)
 	{
 		pOutput[nDaysTotal - iPeriod] = 0;
 		fSum += pInput[nDaysTotal - iPeriod] * (double)iPeriod;
@@ -359,11 +426,11 @@ void CStockPrice::EMA(double* pInput, double* pOutput, int nPeriod, int nDaysTot
 	}
 }
 
-int CStockPrice::GoldenCross(double* pInputFast, double* pInputSlow, int iStart, int iEnd, double threshold)
+int CStockPrice::GoldenCross(double* pInputFast, double* pInputSlow, unsigned int iStart, unsigned int iEnd, double threshold)
 {
 	ASSERT(iEnd > iStart);
 
-	for (int i = iStart; i < iEnd; i++)
+	for (unsigned int i = iStart; i < iEnd; i++)
 	{
 		double d0 = pInputSlow[i] - pInputFast[i];
 		double d1 = pInputSlow[i + 1] - pInputFast[i + 1];
@@ -378,12 +445,12 @@ int CStockPrice::GoldenCross(double* pInputFast, double* pInputSlow, int iStart,
 	return -1;
 }
 
-int CStockPrice::DeathCross(double* pInputFast, double* pInputSlow, int iStart, int iEnd, double threshold)
+int CStockPrice::DeathCross(double* pInputFast, double* pInputSlow, unsigned int iStart, unsigned int iEnd, double threshold)
 {
 	if (iEnd <= iStart)
 		return -1;
 
-	for (int i = iStart; i < iEnd; i++)
+	for (unsigned int i = iStart; i < iEnd; i++)
 	{
 		if (pInputFast[i] <= pInputSlow[i] && pInputFast[i + 1] > pInputSlow[i + 1])
 			return i;

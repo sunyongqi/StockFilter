@@ -368,10 +368,10 @@ void CStockGraph::SetMark(int iStart, int nCount)
 	m_nMarkCount = nCount;
 }
 
-void CStockGraph::SetDrawMode(int nType, int nIndicator)
+void CStockGraph::SetDrawMode(eGraphPeriod ePeriod, eStockIndicator eIndicator)
 {
-	m_nGraphType = nType;
-	m_nIndicator = nIndicator;
+	m_eGraphPeriod = ePeriod;
+	m_eIndicator = eIndicator;
 	CalculateDataRange();
 }
 
@@ -388,12 +388,18 @@ void CStockGraph::Draw(CDC* pDC)
 	if (!m_pStockPrice)
 		return;
 
-	//DrawMarketIndex(pDC, m_pStockPrice->MARKET);
+	DrawMarketIndex(pDC, m_pStockPrice->MARKET);
 	DrawKLine(pDC);
-	switch (m_nIndicator)
+	switch (m_eIndicator)
 	{
 	case siMACD:
 		DrawMACD(pDC);
+		break;
+	case siKDJ:
+		DrawKDJ(pDC);
+		break;
+	case siRSI:
+		DrawRSI(pDC);
 		break;
 	case siSOM:
 		DrawSOM(pDC);
@@ -413,79 +419,42 @@ void CStockGraph::Draw(CDC* pDC)
 
 void CStockGraph::CalculateDataRange()
 {
-	// •`‰æ”ÍˆÍŒvŽZ
-	m_BottomUpper = m_pStockPrice->LOW[0];
-	m_TopUpper = m_pStockPrice->HIGH[0];
-	double* pMarketIndex;
-	if (m_pStockPrice->MARKET == SHANGHAI)
-		pMarketIndex = MARKET_INDEX_SS;
-	else
-		pMarketIndex = MARKET_INDEX_SZ;
-	m_BottomUpperMarket = m_TopUpperMarket = pMarketIndex[0];
+	if (!m_pStockPrice)
+		return;
 
-	switch (m_nIndicator)
+	// •`‰æ”ÍˆÍŒvŽZ
+	m_BottomUpper = CStockPrice::MIN(m_pStockPrice->LOW, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
+	m_TopUpper = CStockPrice::MAX(m_pStockPrice->HIGH, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
+	m_BottomUpperMarket = CStockPrice::MIN(m_pStockPrice->GetMarketIndex(), m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
+	m_TopUpperMarket = CStockPrice::MAX(m_pStockPrice->GetMarketIndex(), m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
+
+	switch (m_eIndicator)
 	{
 	case siMACD:
 	{
-		m_BottomMiddle = min(m_pStockPrice->DIF[0], m_pStockPrice->DEA[0]);
-		m_TopMiddle = max(m_pStockPrice->DIF[0], m_pStockPrice->DEA[0]);
+		m_BottomMiddle = min((CStockPrice::MIN(m_pStockPrice->DIF, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal)), (CStockPrice::MIN(m_pStockPrice->DEA, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal)));
+		m_TopMiddle = max(CStockPrice::MAX(m_pStockPrice->DIF, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal), CStockPrice::MAX(m_pStockPrice->DEA, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal));
+		break;
+	}
+	case siKDJ:
+	case siRSI:
+	{
+		m_BottomMiddle = 0;
+		m_TopMiddle = 100;
 		break;
 	}
 	case siSOM:
 	{
-		m_BottomMiddle = m_TopMiddle = m_pStockPrice->SOM[0];
+		m_BottomMiddle = CStockPrice::MIN(m_pStockPrice->SOM, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
+		m_TopMiddle = CStockPrice::MAX(m_pStockPrice->SOM, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
 		break;
 	}
 	default:
 		break;
 	}
 	
-	m_BottomLower = m_TopLower = m_pStockPrice->VOLUME[0];
-	for (int i = 1; i < m_nNumDayDisplay; i++)
-	{
-		int index = m_nLastIndex + i;
-		if (index >= m_pStockPrice->GetDaysTotal())
-			continue;
-
-		if (m_BottomUpper > m_pStockPrice->LOW[index])
-			m_BottomUpper = m_pStockPrice->LOW[index];
-		if (m_TopUpper < m_pStockPrice->HIGH[index])
-			m_TopUpper = m_pStockPrice->HIGH[index];
-
-		if (m_BottomUpperMarket > pMarketIndex[index])
-			m_BottomUpperMarket = pMarketIndex[index];
-		if (m_TopUpperMarket < pMarketIndex[index])
-			m_TopUpperMarket = pMarketIndex[index];
-
-		switch (m_nIndicator)
-		{
-		case siMACD:
-		{
-			double minMACD = min(m_pStockPrice->DIF[i], m_pStockPrice->DEA[index]);
-			double maxMACD = max(m_pStockPrice->DIF[i], m_pStockPrice->DEA[index]);
-			if (m_BottomMiddle > minMACD)
-				m_BottomMiddle = minMACD;
-			if (m_TopMiddle < maxMACD)
-				m_TopMiddle = maxMACD;
-			break;
-		}
-		case siSOM:
-		{
-			if (m_BottomMiddle > m_pStockPrice->SOM[index])
-				m_BottomMiddle = m_pStockPrice->SOM[index];
-			if (m_TopMiddle < m_pStockPrice->SOM[index])
-				m_TopMiddle = m_pStockPrice->SOM[index];
-			break;
-		}
-		default:
-			break;
-		}
-
-		if (m_BottomLower > m_pStockPrice->VOLUME[index])
-			m_BottomLower = m_pStockPrice->VOLUME[index];
-		if (m_TopLower < m_pStockPrice->VOLUME[index])
-			m_TopLower = m_pStockPrice->VOLUME[index];
-	}
+	m_BottomLower = CStockPrice::MIN(m_pStockPrice->VOLUME, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
+	m_TopLower = CStockPrice::MAX(m_pStockPrice->VOLUME, m_nLastIndex, m_nLastIndex + m_nNumDayDisplay, m_pStockPrice->m_nDaysTotal);
 }
 
 void CStockGraph::DrawBackground(CDC* pDC)
@@ -539,51 +508,51 @@ void CStockGraph::DrawBackground(CDC* pDC)
 
 	// 3–{‚ÌPriceLine‚ð•`‰æ
 	double fMidPrice = ((int)((m_BottomUpper + m_TopUpper) / 2.0 * 100)) / 100.0;
-	pDC->MoveTo(0, GetYPosUpper(m_BottomUpper));
-	pDC->LineTo(m_nWidth, GetYPosUpper(m_BottomUpper));
-	pDC->MoveTo(0, GetYPosUpper(fMidPrice));
-	pDC->LineTo(m_nWidth, GetYPosUpper(fMidPrice));
-	pDC->MoveTo(0, GetYPosUpper(m_TopUpper));
-	pDC->LineTo(m_nWidth, GetYPosUpper(m_TopUpper));
+	pDC->MoveTo(0, GetYPos(m_BottomUpper, gtKLine));
+	pDC->LineTo(m_nWidth, GetYPos(m_BottomUpper, gtKLine));
+	pDC->MoveTo(0, GetYPos(fMidPrice, gtKLine));
+	pDC->LineTo(m_nWidth, GetYPos(fMidPrice, gtKLine));
+	pDC->MoveTo(0, GetYPos(m_TopUpper, gtKLine));
+	pDC->LineTo(m_nWidth, GetYPos(m_TopUpper, gtKLine));
 	
 	std::ostringstream oss;
 	oss << m_BottomUpper;
 	CString strLowPrice(oss.str().c_str());
 	pDC->SetTextColor(defRgbYAxis);
-	pDC->TextOutW(10, GetYPosUpper(m_BottomUpper) - 10, strLowPrice);
+	pDC->TextOutW(10, GetYPos(m_BottomUpper, gtKLine) - 10, strLowPrice);
 	oss.str("");
 	oss.clear(std::ostringstream::goodbit);
 	oss << fMidPrice;
 	CString strMidPrice(oss.str().c_str());
-	pDC->TextOutW(10, GetYPosUpper(fMidPrice) - 10, strMidPrice);
+	pDC->TextOutW(10, GetYPos(fMidPrice, gtKLine) - 10, strMidPrice);
 	oss.str("");
 	oss.clear(std::ostringstream::goodbit);
 	oss << m_TopUpper;
 	CString strHighPrice(oss.str().c_str());
-	pDC->TextOutW(10, GetYPosUpper(m_TopUpper) - 10, strHighPrice);
+	pDC->TextOutW(10, GetYPos(m_TopUpper, gtKLine) - 10, strHighPrice);
 
 	if (m_BottomLower == m_TopLower)
 		return;
 
 	// 2–{‚ÌVolumeLine‚ð•`‰æ
-	pDC->MoveTo(0, GetYPosLower(m_BottomLower));
-	pDC->LineTo(m_nWidth, GetYPosLower(m_BottomLower));
-	pDC->MoveTo(0, GetYPosLower(m_TopLower));
-	pDC->LineTo(m_nWidth, GetYPosLower(m_TopLower));
-	int y1 = GetYPosLower(m_BottomLower);
-	int y2 = GetYPosLower(m_TopLower);
+	pDC->MoveTo(0, GetYPos(m_BottomLower, gtVolume));
+	pDC->LineTo(m_nWidth, GetYPos(m_BottomLower, gtVolume));
+	pDC->MoveTo(0, GetYPos(m_TopLower, gtVolume));
+	pDC->LineTo(m_nWidth, GetYPos(m_TopLower, gtVolume));
+	int y1 = GetYPos(m_BottomLower, gtVolume);
+	int y2 = GetYPos(m_TopLower, gtVolume);
 
 	oss.str("");
 	oss.clear(std::ostringstream::goodbit);
 	oss << m_BottomLower;
 	CString strLowVolume(oss.str().c_str());
 	pDC->SetTextColor(defRgbYAxis);
-	pDC->TextOutW(10, GetYPosLower(m_BottomLower) - 10, strLowVolume);
+	pDC->TextOutW(10, GetYPos(m_BottomLower, gtVolume) - 10, strLowVolume);
 	oss.str("");
 	oss.clear(std::ostringstream::goodbit);
 	oss << m_TopLower;
 	CString strHighVolume(oss.str().c_str());
-	pDC->TextOutW(10, GetYPosLower(m_TopLower) - 10, strHighVolume);
+	pDC->TextOutW(10, GetYPos(m_TopLower, gtVolume) - 10, strHighVolume);
 
 	pDC->SelectObject(pOldPen);
 }
@@ -624,10 +593,10 @@ void CStockGraph::DrawKLine(CDC* pDC)
 		XPos = IndexToXPos(i);
 		rcLeft = (int)(XPos - rcWidth / 2.0);
 		rcRight = (int)(XPos + rcWidth / 2.0);
-		rcTop = GetYPosUpper(m_pStockPrice->OPEN[index]);
-		rcBottom = GetYPosUpper(m_pStockPrice->CLOSE[index]);
-		lineTop = GetYPosUpper(m_pStockPrice->HIGH[index]);
-		lineBottom = GetYPosUpper(m_pStockPrice->LOW[index]);
+		rcTop = GetYPos(m_pStockPrice->OPEN[index], gtKLine);
+		rcBottom = GetYPos(m_pStockPrice->CLOSE[index], gtKLine);
+		lineTop = GetYPos(m_pStockPrice->HIGH[index], gtKLine);
+		lineBottom = GetYPos(m_pStockPrice->LOW[index], gtKLine);
 
 		if (rcTop == rcBottom)
 		{
@@ -649,93 +618,91 @@ void CStockGraph::DrawKLine(CDC* pDC)
 
 void CStockGraph::DrawMarketIndex(CDC* pDC, int market)
 {
-	ASSERT(m_nNumDayDisplay > 1);
-	CPen* pOldPen = pDC->SelectObject(&m_penBlue);
+	//ASSERT(m_nNumDayDisplay > 1);
+	//CPen* pOldPen = pDC->SelectObject(&m_penBlue);
 
-	if (m_BottomUpperMarket < m_TopUpperMarket)
-	{
-		double* pMarketIndex;
-		if (market == SHANGHAI)
-			pMarketIndex = MARKET_INDEX_SS;
-		else
-			pMarketIndex = MARKET_INDEX_SZ;
-		pDC->MoveTo(IndexToXPos(0), GetYPosUpperMarket(pMarketIndex[m_nLastIndex]));
-		for (int i = 1; i < m_nNumDayDisplay; i++)
-		{
-			pDC->LineTo(IndexToXPos(i), GetYPosUpperMarket(pMarketIndex[m_nLastIndex + i]));
-		}
-	}
+	//if (m_BottomUpperMarket < m_TopUpperMarket)
+	//{
+		//double* pMarketIndex;
+		//if (market == SHANGHAI)
+		//	pMarketIndex = MARKET_INDEX_SS;
+		//else
+		//	pMarketIndex = MARKET_INDEX_SZ;
+		//pDC->MoveTo(IndexToXPos(0), GetYPos(pMarketIndex[m_nLastIndex], gtMarketIndex));
+		//for (int i = 1; i < m_nNumDayDisplay; i++)
+		//{
+		//	pDC->LineTo(IndexToXPos(i), GetYPos(pMarketIndex[m_nLastIndex + i], gtMarketIndex));
+		//}
+		DrawLine(pDC, m_pStockPrice->GetMarketIndex(), gtMarketIndex, &m_penBlue);
+	//}
 
-	pDC->SelectObject(pOldPen);
+	//pDC->SelectObject(pOldPen);
 }
 
 void CStockGraph::DrawMovingAverages(CDC* pDC, int iLine)
 {
-	ASSERT(m_nNumDayDisplay > 1);
+	//ASSERT(m_nNumDayDisplay > 1);
 	if (!m_pStockPrice)
 		return;
 
-	CPen* pOldPen = (CPen*)pDC->SelectObject(&m_penMA[iLine]);
-	if (m_BottomUpper < m_TopUpper)
-	{
-		pDC->MoveTo(IndexToXPos(0), GetYPosUpper(m_pStockPrice->PRICE_MA5[m_nLastIndex]));
-		for (int i = 1; i < m_nNumDayDisplay; i++)
-		{
-			pDC->LineTo(IndexToXPos(i), GetYPosUpper(m_pStockPrice->PRICE_MA5[m_nLastIndex + i]));
-		}
-	}
-	if (m_BottomLower < m_TopLower)
-	{
-		pDC->MoveTo(IndexToXPos(0), GetYPosLower(m_pStockPrice->VOLUME_MA5[m_nLastIndex]));
-		for (int i = 1; i < m_nNumDayDisplay; i++)
-		{
-			pDC->LineTo(IndexToXPos(i), GetYPosLower(m_pStockPrice->VOLUME_MA5[m_nLastIndex + i]));
-		}
-	}
+	//CPen* pOldPen = (CPen*)pDC->SelectObject(&m_penMA[iLine]);
+	//if (m_BottomUpper < m_TopUpper)
+	//{
+	//	pDC->MoveTo(IndexToXPos(0), GetYPos(m_pStockPrice->PRICE_MA5[m_nLastIndex], gtKLine));
+	//	for (int i = 1; i < m_nNumDayDisplay; i++)
+	//	{
+	//		pDC->LineTo(IndexToXPos(i), GetYPos(m_pStockPrice->PRICE_MA5[m_nLastIndex + i], gtKLine));
+	//	}
+	//}
+	//if (m_BottomLower < m_TopLower)
+	//{
+	//	pDC->MoveTo(IndexToXPos(0), GetYPos(m_pStockPrice->VOLUME_MA5[m_nLastIndex], gtVolume));
+	//	for (int i = 1; i < m_nNumDayDisplay; i++)
+	//	{
+	//		pDC->LineTo(IndexToXPos(i), GetYPos(m_pStockPrice->VOLUME_MA5[m_nLastIndex + i], gtVolume));
+	//	}
+	//}
+	DrawLine(pDC, m_pStockPrice->PRICE_MA5, gtKLine, &m_penMA[iLine]);
+	DrawLine(pDC, m_pStockPrice->VOLUME_MA5, gtVolume, &m_penMA[iLine]);
 
-	pDC->SelectObject(pOldPen);
+	//pDC->SelectObject(pOldPen);
 }
 
 void CStockGraph::DrawMACD(CDC* pDC)
 {
-	ASSERT(m_nNumDayDisplay > 1);
+	DrawLine(pDC, m_pStockPrice->DIF, gtIndicator, &m_penWhite);
+	DrawLine(pDC, m_pStockPrice->DEA, gtIndicator, &m_penYellow);
+}
 
-	if (m_BottomMiddle < m_TopMiddle)
-	{
-		CPen* pOldPen = pDC->SelectObject(&m_penWhite);
-		pDC->MoveTo(IndexToXPos(0), GetYPosMiddle(m_pStockPrice->DIF[m_nLastIndex]));
-		for (int i = 1; i < m_nNumDayDisplay; i++)
-		{
-			int y = GetYPosMiddle(m_pStockPrice->DIF[m_nLastIndex + i]);
-			pDC->LineTo(IndexToXPos(i), GetYPosMiddle(m_pStockPrice->DIF[m_nLastIndex + i]));
-		}
+void CStockGraph::DrawKDJ(CDC* pDC)
+{
+	DrawLine(pDC, m_pStockPrice->K, gtIndicator, &m_penWhite);
+	DrawLine(pDC, m_pStockPrice->D, gtIndicator, &m_penYellow);
+	DrawLine(pDC, m_pStockPrice->J, gtIndicator, &m_penRed);
+}
 
-		pDC->SelectObject(&m_penYellow);
-		pDC->MoveTo(IndexToXPos(0), GetYPosMiddle(m_pStockPrice->DEA[m_nLastIndex]));
-		for (int i = 1; i < m_nNumDayDisplay; i++)
-		{
-			int y = GetYPosMiddle(m_pStockPrice->DEA[m_nLastIndex + i]);
-			pDC->LineTo(IndexToXPos(i), GetYPosMiddle(m_pStockPrice->DEA[m_nLastIndex + i]));
-		}
-		pDC->SelectObject(pOldPen);
-	}
+void CStockGraph::DrawRSI(CDC* pDC)
+{
+	DrawLine(pDC, m_pStockPrice->RSI, gtIndicator, &m_penYellow);
 }
 
 void CStockGraph::DrawSOM(CDC* pDC)
 {
-	ASSERT(m_nNumDayDisplay > 1);
+	DrawLine(pDC, m_pStockPrice->SOM, gtIndicator, &m_penYellow);
+}
 
-	if (m_BottomMiddle < m_TopMiddle)
+void CStockGraph::DrawLine(CDC* pDC, double* pInput, eGraphType type, CPen* pPen)
+{
+	ASSERT(m_nNumDayDisplay > 1);
+	ASSERT(m_BottomMiddle < m_TopMiddle);
+
+	CPen* pOldPen = pDC->SelectObject(pPen);
+	pDC->MoveTo(IndexToXPos(0), GetYPos(pInput[m_nLastIndex], type));
+	for (int i = 1; i < m_nNumDayDisplay; i++)
 	{
-		CPen* pOldPen = pDC->SelectObject(&m_penYellow);
-		pDC->MoveTo(IndexToXPos(0), GetYPosMiddle(m_pStockPrice->SOM[m_nLastIndex]));
-		for (int i = 1; i < m_nNumDayDisplay; i++)
-		{
-			int y = GetYPosMiddle(m_pStockPrice->SOM[m_nLastIndex + i]);
-			pDC->LineTo(IndexToXPos(i), GetYPosMiddle(m_pStockPrice->SOM[m_nLastIndex + i]));
-		}
-		pDC->SelectObject(pOldPen);
+		pDC->LineTo(IndexToXPos(i), GetYPos(pInput[m_nLastIndex + i], type));
 	}
+	pDC->SelectObject(pOldPen);
 }
 
 void CStockGraph::DrawMark(CDC* pDC)
@@ -756,8 +723,8 @@ void CStockGraph::DrawMark(CDC* pDC)
 	int XPosRight = IndexToXPos(m_nMarkStart - m_nLastIndex);
 	int rcLeft = (int)(XPosLeft - m_fPlotSpace / 2.0);
 	int rcRight = (int)(XPosRight + m_fPlotSpace / 2.0);
-	int rcTop = GetYPosUpper(max(m_pStockPrice->HIGH[m_nMarkStart], m_pStockPrice->HIGH[m_nMarkStart + m_nMarkCount - 1]));
-	int rcBottom = GetYPosUpper(min(m_pStockPrice->LOW[m_nMarkStart], m_pStockPrice->LOW[m_nMarkStart + m_nMarkCount - 1]));
+	int rcTop = GetYPos(max(m_pStockPrice->HIGH[m_nMarkStart], m_pStockPrice->HIGH[m_nMarkStart + m_nMarkCount - 1]), gtKLine);
+	int rcBottom = GetYPos(min(m_pStockPrice->LOW[m_nMarkStart], m_pStockPrice->LOW[m_nMarkStart + m_nMarkCount - 1]), gtKLine);
 	pDC->Rectangle(rcLeft, rcTop, rcRight, rcBottom);
 
 	pDC->SelectObject(pOldPen);
@@ -802,14 +769,33 @@ void CStockGraph::DrawVolume(CDC* pDC)
 		XPos = IndexToXPos(i);
 		rcLeft = (int)(XPos - rcWidth / 2.0);
 		rcRight = (int)(XPos + rcWidth / 2.0);
-		rcTop = GetYPosLower(m_pStockPrice->VOLUME[index]);
-		rcBottom = GetYPosLower(0);
+		rcTop = GetYPos(m_pStockPrice->VOLUME[index], gtVolume);
+		rcBottom = GetYPos(0, gtVolume);
 		CRect rect(rcLeft, rcTop, rcRight, rcBottom);
 		pDC->Rectangle(rect);
 	}
 
 	pDC->SelectObject(pOldBrush);
 	pDC->SelectObject(pOldPen);
+}
+
+int CStockGraph::GetYPos(double value, eGraphType type)
+{
+	switch (type)
+	{
+	case gtKLine:
+		return GetYPosUpper(value);
+		break;
+	case gtMarketIndex:
+		return GetYPosUpperMarket(value);
+		break;
+	case gtIndicator:
+		return GetYPosMiddle(value);
+		break;
+	case gtVolume:
+		return GetYPosLower(value);
+		break;
+	}
 }
 
 int CStockGraph::GetYPosUpper(double value)
@@ -830,7 +816,7 @@ int CStockGraph::GetYPosMiddle(double value)
 	return (int)(m_nYSpace * 2 + m_nHeightUpper + (double)m_nHeightMiddle * (1.0 - (value - m_BottomMiddle) / (m_TopMiddle - m_BottomMiddle)));
 }
 
-int CStockGraph::GetYPosLower(long value)
+int CStockGraph::GetYPosLower(double value)
 {
 	ASSERT(m_TopLower - m_BottomLower != 0);
 	return (int)(m_nYSpace * 3 + m_nHeightUpper + m_nHeightMiddle + (double)m_nHeightLower * (1.0 - (double)(value - m_BottomLower) / (double)(m_TopLower - m_BottomLower)));

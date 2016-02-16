@@ -14,6 +14,7 @@ class CStockFilterDlg : public CDialogEx
 // コンストラクション
 public:
 	CStockFilterDlg(CWnd* pParent = NULL);	// 標準コンストラクター
+	virtual ~CStockFilterDlg();
 
 // ダイアログ データ
 #ifdef AFX_DESIGN_TIME
@@ -66,7 +67,7 @@ private:
 
 	int m_iFound;
 public:
-	int m_nGraphType;
+	int m_nGraphPeriod;
 	int m_nIndicator;
 	afx_msg void OnBnClickedRadioGraph(UINT nID);
 	CListBox m_cStockList;

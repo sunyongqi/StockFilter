@@ -11,10 +11,18 @@ typedef DWORD KPATTERN;
 
 typedef enum
 {
-	gtRealtime	= 0,
-	gtDay		= 1,
-	gtWeek		= 2,
+	gtKLine = 0,
+	gtMarketIndex = 1,
+	gtIndicator = 2,
+	gtVolume = 3,
 } eGraphType;
+
+typedef enum
+{
+	gpRealtime	= 0,
+	gpDay		= 1,
+	gpWeek		= 2,
+} eGraphPeriod;
 
 typedef enum
 {
@@ -24,6 +32,13 @@ typedef enum
 	siSOM		= 3,
 } eStockIndicator;
 
+typedef enum
+{
+	gpUpper		= 0,
+	gpMidlle	= 1,
+	gpLower		= 2,
+} eGraphPosition;
+
 typedef struct daySummary
 {
 	long date;
@@ -31,20 +46,20 @@ typedef struct daySummary
 	double high;
 	double low;
 	double close;
-	long volume;
+	double volume;
 	double adjClose;
 	double priceMA[MA_LINE_MAX];
-	long volumeMA[MA_LINE_MAX];
+	double volumeMA[MA_LINE_MAX];
 	//double priceMA_1;
 	//double priceMA_2;
 	//double priceMA_3;
 	//double priceMA_4;
 	//double priceMA_5;
-	//long volumeMA_1;
-	//long volumeMA_2;
-	//long volumeMA_3;
-	//long volumeMA_4;
-	//long volumeMA_5;
+	//double volumeMA_1;
+	//double volumeMA_2;
+	//double volumeMA_3;
+	//double volumeMA_4;
+	//double volumeMA_5;
 	KPATTERN kPattern1;
 	KPATTERN kPattern2;
 	KPATTERN kPattern3;
@@ -108,15 +123,10 @@ public:
 	void CalculateDataRange();
 	//void AnalyzeData(SUMMARY* pHistory, int nCount = 1);
 	void SetStockPrice(CStockPrice* pStockPrice);
-	int GetYPosUpper(double value);
-	int GetYPosUpperMarket(double value);
-	int GetYPosMiddle(double value);
-	int GetYPosLower(long value);
-	int IndexToXPos(int nIndex);
 	int FindCount(SUMMARY* pDate, int nPeriod);
 	int FindNext(SUMMARY* pDate, int nPeriod);
 	void SetMark(int iStart, int nCount);
-	void SetDrawMode(int nType, int nIndicator);
+	void SetDrawMode(eGraphPeriod ePeriod, eStockIndicator eIndicator);
 
 	// オーバーライド
 	//{{AFX_VIRTUAL(CStockGraph)
@@ -144,8 +154,8 @@ private:
 	double		m_TopUpperMarket;			// 上段MarketIndex描画範囲の上限
 	double		m_BottomMiddle;			// 中段描画範囲の下限
 	double		m_TopMiddle;			// 中段描画範囲の上限
-	long		m_BottomLower;			// 下段描画範囲の上限
-	long		m_TopLower;				// 下段描画範囲の上限
+	double		m_BottomLower;			// 下段描画範囲の上限
+	double		m_TopLower;				// 下段描画範囲の上限
 	int			m_nWidth;
 	int			m_nHeight;
 	int			m_nHeightUpper;
@@ -156,8 +166,8 @@ private:
 	double		m_fMargin;
 	int			m_nMarkStart;
 	int			m_nMarkCount;
-	int			m_nGraphType;
-	int			m_nIndicator;
+	int			m_eGraphPeriod;
+	int			m_eIndicator;
 
 	//SUMMARY*	m_pHistory;
 	//int			m_nDaysTotal;
@@ -173,9 +183,19 @@ private:
 	void DrawMarketIndex(CDC* pDC, int market);
 	void DrawMovingAverages(CDC* pDC, int iLine);
 	void DrawMACD(CDC* pDC);
+	void DrawKDJ(CDC* pDC);
+	void DrawRSI(CDC* pDC);
 	void DrawSOM(CDC* pDC);
+	void DrawLine(CDC* pDC, double* pInput, eGraphType type, CPen* pPen);
 	void DrawMark(CDC* pDC);
 	void DrawVolume(CDC* pDC);
+
+	int GetYPos(double value, eGraphType type);
+	int GetYPosUpper(double value);
+	int GetYPosUpperMarket(double value);
+	int GetYPosMiddle(double value);
+	int GetYPosLower(double value);
+	int IndexToXPos(int nIndex);
 
 	void CalculateMovingAverages();
 	void CalculateKLinePattern();
