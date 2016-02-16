@@ -101,6 +101,14 @@ int CStockPrice::DownloadAllStocksPrices()
 	{
 		std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
 		std::string strCode = cv.to_bytes(it->first);
+		if (strCode.front() == '6')
+		{
+			strCode += ".ss";
+		}
+		else
+		{
+			strCode += ".sz";
+		}
 		it++;
 		std::string strStockURL = strYahooURL + strCode;
 		std::string strFileName = PRICEFILE_PATH;
@@ -333,6 +341,8 @@ void CStockPrice::CalculateSOM()
 	double* pMarketIndex = GetMarketIndex();
 	for (int i = 0; i < m_nDaysTotal; i++)
 		SOM[i] = CLOSE[i] / pMarketIndex[i] * 100;
+	MA(SOM, SOM_MA5, 5, m_nDaysTotal);
+	MA(SOM, SOM_MA10, 10, m_nDaysTotal);
 }
 
 double* CStockPrice::GetMarketIndex()
@@ -435,11 +445,7 @@ int CStockPrice::GoldenCross(double* pInputFast, double* pInputSlow, unsigned in
 		double d0 = pInputSlow[i] - pInputFast[i];
 		double d1 = pInputSlow[i + 1] - pInputFast[i + 1];
 		double d2 = pInputSlow[i + 2] - pInputFast[i + 2];
-		if (d0 <= 0 && d1 >= threshold && d2 >= threshold && d2 > d1)
-		//if (pInputFast[i] - pInputSlow[i] >= 0 && 
-		//	pInputSlow[i + 1] - pInputFast[i + 1] >= threshold &&
-		//	pInputSlow[i + 2] - pInputFast[i + 2] >= threshold * 2)
-		//if (pInputFast[i] >= pInputSlow[i] && pInputFast[i + 1] < pInputSlow[i + 1])
+		if (d0 <= 0 && d1 >= threshold && d2 > d1)
 			return i;
 	}
 	return -1;
@@ -452,7 +458,11 @@ int CStockPrice::DeathCross(double* pInputFast, double* pInputSlow, unsigned int
 
 	for (unsigned int i = iStart; i < iEnd; i++)
 	{
-		if (pInputFast[i] <= pInputSlow[i] && pInputFast[i + 1] > pInputSlow[i + 1])
+		//if (pInputFast[i] <= pInputSlow[i] && pInputFast[i + 1] > pInputSlow[i + 1])
+		double d0 = pInputSlow[i] - pInputFast[i];
+		double d1 = pInputSlow[i + 1] - pInputFast[i + 1];
+		double d2 = pInputSlow[i + 2] - pInputFast[i + 2];
+		if (d0 >= 0 && d1 <= -threshold && d2 < d1)
 			return i;
 	}
 	return -1;

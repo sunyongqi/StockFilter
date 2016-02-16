@@ -318,7 +318,7 @@ CStockPrice* CStockFilterDlg::GetStockPrice(CString strInput)
 	UpdateData(FALSE);
 
 	CStockPrice* pStockPrice = new CStockPrice(strCode);
-	//pStockPrice->DownloadSingleStockPrices(strCode);
+	pStockPrice->DownloadSingleStockPrices();
 	return pStockPrice;
 }
 
@@ -423,11 +423,18 @@ void CStockFilterDlg::OnBnClickedFindpattern()
 	int i = 0;
 	while (it != g_mapCodeName.end())
 	{
-		std::wstring wstr = it->first;
-		m_cStockList.InsertString(-1, wstr.c_str());
+		std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
+		std::string strCode = cv.to_bytes(it->first);
+		CStockPrice* pStockPrice = new CStockPrice(strCode);
+		pStockPrice->LoadStockData();
+		int iFound = CStockPrice::GoldenCross(pStockPrice->DIF, pStockPrice->DEA, 0, 1);
+		if (iFound >= 0)
+		{
+			m_cStockList.InsertString(-1, it->first.c_str());
+			i++;
+		}
+		delete pStockPrice;
 		it++;
-		if (i++ > 10)
-			break;
 	}
 
 	//if (!m_pStockPrice)
@@ -501,8 +508,7 @@ void CStockFilterDlg::OnBnClickedFindpattern()
 
 void CStockFilterDlg::OnBnClickedDownloadall()
 {
-	CStockPrice stockPrice;
-	stockPrice.DownloadAllStocksPrices();
+	CStockPrice::DownloadAllStocksPrices();
 }
 
 

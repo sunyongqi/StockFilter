@@ -89,6 +89,8 @@ protected:
 	double J[NUM_DAYS_MAX];
 	double RSI[NUM_DAYS_MAX];
 	double SOM[NUM_DAYS_MAX];	// StockPrice Over MarketIndex
+	double SOM_MA5[NUM_DAYS_MAX];
+	double SOM_MA10[NUM_DAYS_MAX];
 
 	eMarket MARKET;
 

@@ -2,7 +2,7 @@
 
 #include <map>
 
-#define NUM_LINE_DISPLAY	81
+#define NUM_LINE_DISPLAY	121
 #define MA_LINE_MAX			5
 
 class CStockPrice;
