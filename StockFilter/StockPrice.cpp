@@ -18,8 +18,11 @@
 
 extern std::map<std::wstring, std::wstring> g_mapCodeName;
 
-double MARKET_INDEX_SS[NUM_DAYS_MAX];
-double MARKET_INDEX_SZ[NUM_DAYS_MAX];
+CStockPrice g_MarketIndexShanghai;
+CStockPrice g_MarketIndexShenzhen;
+
+//double MARKET_INDEX_SS[NUM_DAYS_MAX];
+//double MARKET_INDEX_SZ[NUM_DAYS_MAX];
 
 CStockPrice::CStockPrice()
 {
@@ -30,12 +33,10 @@ CStockPrice::CStockPrice(std::string strCode)
 {
 	if (strCode.front() == L'6')
 	{
-		strCode += ".ss";
 		MARKET = SHANGHAI;
 	}
 	else
 	{
-		strCode += ".sz";
 		MARKET = SHENZHEN;
 	}
 	m_strCode = strCode;
@@ -55,15 +56,95 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
 	return written;
 }
 
-bool CStockPrice::DownloadSingleStockPrices()
+bool CStockPrice::DownloadStockPrices()
 {
+	if (m_strCode.front() == L'6')
+	{
+		MARKET = SHANGHAI;
+	}
+	else
+	{
+		MARKET = SHENZHEN;
+	}
+	return DownloadData163(m_strCode);
+	//return DownloadDataYahoo(m_strCode);
+}
+
+bool CStockPrice::DownloadStockPrices(std::string strCode)
+{
+	m_strCode = strCode;
+	return DownloadData163(m_strCode);
+	//return DownloadDataYahoo(m_strCode);
+}
+
+bool CStockPrice::DownloadDataYahoo(std::string strCode)
+{
+	if (strCode != "000001.ss" && strCode != "399001.sz")
+	{
+		if (strCode.front() == '6')
+		{
+			strCode += ".ss";
+		}
+		else
+		{
+			strCode += ".sz";
+		}
+	}
+
 	CURL *curl;
 	FILE *fp;
 	CURLcode res;
 	std::string strYahooURL = "http://table.finance.yahoo.com/table.csv?s=";
-	std::string strStockURL = strYahooURL + m_strCode;
-	std::string strFileName = PRICEFILE_PATH;
-	strFileName += m_strCode;
+	std::string strStockURL = strYahooURL + strCode;
+	std::string strFileName = PRICEFILE_PATH_YAHOO;
+	strFileName += "Yahoo_";
+	strFileName += strCode;
+	strFileName += ".csv";
+	curl = curl_easy_init();
+	if (curl) {
+		if (!fopen_s(&fp, strFileName.c_str(), "wb"))
+		{
+			curl_easy_setopt(curl, CURLOPT_URL, strStockURL.c_str());
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+			res = curl_easy_perform(curl);
+			/* always cleanup */
+			curl_easy_cleanup(curl);
+		}
+		else
+			return false;
+
+		fclose(fp);
+	}
+	else
+		return false;
+
+	return true;
+}
+
+bool CStockPrice::DownloadData163(std::string strCode)
+{
+	if (strCode != "0000001" && strCode != "1399001")
+	{
+		if (strCode.front() == '6')
+		{
+			strCode = "0" + strCode;
+		}
+		else
+		{
+			strCode = "1" + strCode;
+		}
+	}
+
+	CURL *curl;
+	FILE *fp;
+	CURLcode res;
+	std::string strYahooURL = "http://quotes.money.163.com/service/chddata.html?code=";
+	std::string strStartDate = "&start=20150101";
+	std::string strStockURL = strYahooURL + strCode + strStartDate;
+	std::string strFileName = PRICEFILE_PATH_163;
+	strFileName += "163_";
+	strFileName += strCode;
 	strFileName += ".csv";
 	curl = curl_easy_init();
 	if (curl) {
@@ -89,11 +170,6 @@ bool CStockPrice::DownloadSingleStockPrices()
 
 int CStockPrice::DownloadAllStocksPrices()
 {
-	CURL *curl;
-	FILE *fp;
-	CURLcode res;
-	std::string strYahooURL = "http://table.finance.yahoo.com/table.csv?s=";
-
 	std::map<std::wstring, std::wstring>::iterator it = g_mapCodeName.begin();
 	int nCount = 0;
 
@@ -101,126 +177,109 @@ int CStockPrice::DownloadAllStocksPrices()
 	{
 		std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
 		std::string strCode = cv.to_bytes(it->first);
-		if (strCode.front() == '6')
+		if (DownloadData163(strCode))
 		{
-			strCode += ".ss";
-		}
-		else
-		{
-			strCode += ".sz";
-		}
-		it++;
-		std::string strStockURL = strYahooURL + strCode;
-		std::string strFileName = PRICEFILE_PATH;
-		strFileName += strCode;
-		strFileName += ".csv";
-		curl = curl_easy_init();
-		if (curl)
-		{
-			if (!fopen_s(&fp, strFileName.c_str(), "wb"))
-			{
-				curl_easy_setopt(curl, CURLOPT_URL, strStockURL.c_str());
-				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-				curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-				res = curl_easy_perform(curl);
-				/* always cleanup */
-				curl_easy_cleanup(curl);
-			}
-			else
-				continue;
-
-			fclose(fp);
 			nCount++;
 		}
+		it++;
 	}
 	return nCount;
 }
 
 bool CStockPrice::LoadMarketIndices()
 {
-	CURL *curl;
-	FILE *fp;
-	CURLcode res;
-	std::string strYahooURL = "http://table.finance.yahoo.com/table.csv?s=";
-
-
-	// SHANGHAI
-	std::string strCode = "000001.ss";
-	std::string strStockURL = strYahooURL + strCode;
-	std::string strFileName = PRICEFILE_PATH;
-	strFileName += strCode;
-	strFileName += ".csv";
-	curl = curl_easy_init();
-	if (curl)
-	{
-		if (!fopen_s(&fp, strFileName.c_str(), "wb"))
-		{
-			curl_easy_setopt(curl, CURLOPT_URL, strStockURL.c_str());
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-			res = curl_easy_perform(curl);
-			/* always cleanup */
-			curl_easy_cleanup(curl);
-		}
-		else
-			return false;
-		fclose(fp);
-
-		if (fopen_s(&fp, strFileName.c_str(), "r"))
-			return false;
-		char cYear[16], cMonth[16], cDay[16], cOpen[16], cHigh[16], cLow[16], cClose[16], cVolume[16], cAdjClose[16];
-		char temp[256];
-		fgets(temp, 256, fp);
-		for (int i = 0; i < NUM_DAYS_MAX; i++) {
-			cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
-			if (fscanf_s(fp, "%[^-]-%[^-]-%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cOpen, 16, cHigh, 16, cLow, 16, cClose, 16, cVolume, 16, cAdjClose, 16) == EOF)
-				break;
-
-			MARKET_INDEX_SS[i] = strtod(cClose, NULL);
-		}
-		fclose(fp);
-	}
-
-	// SHENZHEN
-	strCode = "399001.sz";
-	strStockURL = strYahooURL + strCode;
-	strFileName = PRICEFILE_PATH;
-	strFileName += strCode;
-	strFileName += ".csv";
-	curl = curl_easy_init();
-	if (curl)
-	{
-		if (!fopen_s(&fp, strFileName.c_str(), "wb"))
-		{
-			curl_easy_setopt(curl, CURLOPT_URL, strStockURL.c_str());
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-			res = curl_easy_perform(curl);
-			/* always cleanup */
-			curl_easy_cleanup(curl);
-		}
-		else
-			return false;
-		fclose(fp);
-
-		if (fopen_s(&fp, strFileName.c_str(), "r"))
-			return false;
-
-		char cYear[16], cMonth[16], cDay[16], cOpen[16], cHigh[16], cLow[16], cClose[16], cVolume[16], cAdjClose[16];
-		char temp[256];
-		fgets(temp, 256, fp);
-		for (int i = 0; i < NUM_DAYS_MAX; i++) {
-			cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
-			if (fscanf_s(fp, "%[^-]-%[^-]-%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cOpen, 16, cHigh, 16, cLow, 16, cClose, 16, cVolume, 16, cAdjClose, 16) == EOF)
-				break;
-
-			MARKET_INDEX_SZ[i] = strtod(cClose, NULL);
-		}
-		fclose(fp);
-	}
-
-	return true;
+	return (g_MarketIndexShanghai.DownloadStockPrices("0000001") &&
+		g_MarketIndexShanghai.LoadStockData() &&
+		g_MarketIndexShenzhen.DownloadStockPrices("1399001") &&
+		g_MarketIndexShenzhen.LoadStockData());
 }
+
+
+//bool CStockPrice::LoadMarketIndices()
+//{
+//	CURL *curl;
+//	FILE *fp;
+//	CURLcode res;
+//	std::string strYahooURL = "http://table.finance.yahoo.com/table.csv?s=";
+//
+//
+//	// SHANGHAI
+//	std::string strCode = "000001.ss";
+//	std::string strStockURL = strYahooURL + strCode;
+//	std::string strFileName = PRICEFILE_PATH_YAHOO;
+//	strFileName += strCode;
+//	strFileName += ".csv";
+//	curl = curl_easy_init();
+//	if (curl)
+//	{
+//		if (!fopen_s(&fp, strFileName.c_str(), "wb"))
+//		{
+//			curl_easy_setopt(curl, CURLOPT_URL, strStockURL.c_str());
+//			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+//			curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+//			res = curl_easy_perform(curl);
+//			/* always cleanup */
+//			curl_easy_cleanup(curl);
+//		}
+//		else
+//			return false;
+//		fclose(fp);
+//
+//		if (fopen_s(&fp, strFileName.c_str(), "r"))
+//			return false;
+//		char cYear[16], cMonth[16], cDay[16], cOpen[16], cHigh[16], cLow[16], cClose[16], cVolume[16], cAdjClose[16];
+//		char temp[256];
+//		fgets(temp, 256, fp);
+//		for (int i = 0; i < NUM_DAYS_MAX; i++) {
+//			cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
+//			if (fscanf_s(fp, "%[^-]-%[^-]-%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cOpen, 16, cHigh, 16, cLow, 16, cClose, 16, cVolume, 16, cAdjClose, 16) == EOF)
+//				break;
+//
+//			MARKET_INDEX_SS[i] = strtod(cClose, NULL);
+//		}
+//		fclose(fp);
+//	}
+//
+//	// SHENZHEN
+//	strCode = "399001.sz";
+//	strStockURL = strYahooURL + strCode;
+//	strFileName = PRICEFILE_PATH_YAHOO;
+//	strFileName += strCode;
+//	strFileName += ".csv";
+//	curl = curl_easy_init();
+//	if (curl)
+//	{
+//		if (!fopen_s(&fp, strFileName.c_str(), "wb"))
+//		{
+//			curl_easy_setopt(curl, CURLOPT_URL, strStockURL.c_str());
+//			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+//			curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+//			res = curl_easy_perform(curl);
+//			/* always cleanup */
+//			curl_easy_cleanup(curl);
+//		}
+//		else
+//			return false;
+//		fclose(fp);
+//
+//		if (fopen_s(&fp, strFileName.c_str(), "r"))
+//			return false;
+//
+//		char cYear[16], cMonth[16], cDay[16], cOpen[16], cHigh[16], cLow[16], cClose[16], cVolume[16], cAdjClose[16];
+//		char temp[256];
+//		fgets(temp, 256, fp);
+//		for (int i = 0; i < NUM_DAYS_MAX; i++) {
+//			cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
+//			if (fscanf_s(fp, "%[^-]-%[^-]-%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cOpen, 16, cHigh, 16, cLow, 16, cClose, 16, cVolume, 16, cAdjClose, 16) == EOF)
+//				break;
+//
+//			MARKET_INDEX_SZ[i] = strtod(cClose, NULL);
+//		}
+//		fclose(fp);
+//	}
+//
+//	return true;
+//}
 
 int CStockPrice::LoadStockData()
 {
@@ -237,8 +296,27 @@ int CStockPrice::LoadStockData()
 
 bool CStockPrice::LoadPriceFile()
 {
-	std::string strFileName = PRICEFILE_PATH;
-	strFileName += m_strCode;
+	return LoadFile163();
+	//return LoadFileYahoo();
+}
+
+bool CStockPrice::LoadFileYahoo()
+{
+	std::string strCode = m_strCode;
+	if (strCode != "000001.ss" && strCode != "399001.sz")
+	{
+		if (strCode.front() == '6')
+		{
+			strCode = strCode + ".ss";
+		}
+		else
+		{
+			strCode = strCode + ".sz";
+		}
+	}
+	std::string strFileName = PRICEFILE_PATH_YAHOO;
+	strFileName += "Yahoo_";
+	strFileName += strCode;
 	strFileName += ".csv";
 	FILE* fp = NULL;
 	if (fopen_s(&fp, strFileName.c_str(), "r"))
@@ -250,7 +328,7 @@ bool CStockPrice::LoadPriceFile()
 	fgets(temp, 256, fp);
 	int i;
 	for (i = 0; i < NUM_DAYS_MAX; i++) {
-		cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
+		//cYear[0] = cMonth[0] = cDay[0] = cOpen[0] = cHigh[0] = cLow[0] = cClose[0] = cVolume[0] = cAdjClose[0] = '\0';
 		if (fscanf_s(fp, "%[^-]-%[^-]-%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cOpen, 16, cHigh, 16, cLow, 16, cClose, 16, cVolume, 16, cAdjClose, 16) == EOF)
 			break;
 		DATE[i] = strtol(cYear, NULL, 10) * 10000 + strtol(cMonth, NULL, 10) * 100 + strtol(cDay, NULL, 10);
@@ -259,7 +337,67 @@ bool CStockPrice::LoadPriceFile()
 		LOW[i] = strtod(cLow, NULL);
 		CLOSE[i] = strtod(cClose, NULL);
 		VOLUME[i] = strtod(cVolume, NULL);
-		ADJCLOSE[i] = strtod(cAdjClose, NULL);
+		//ADJCLOSE[i] = strtod(cAdjClose, NULL);
+	}
+	fclose(fp);
+	m_nDaysTotal = i;
+
+	return true;
+}
+
+bool CStockPrice::LoadFile163()
+{
+	std::string strCode = m_strCode;
+	bool bIsMarketIndex = false;
+	if (strCode != "0000001" && strCode != "1399001")
+	{
+		if (strCode.front() == '6')
+		{
+			strCode = "0" + strCode;
+		}
+		else
+		{
+			strCode = "1" + strCode;
+		}
+	}
+	else
+		bIsMarketIndex = true;
+	std::string strFileName = PRICEFILE_PATH_163;
+	strFileName += "163_";
+	strFileName += strCode;
+	strFileName += ".csv";
+	FILE* fp = NULL;
+	if (fopen_s(&fp, strFileName.c_str(), "r"))
+		return false;
+
+	// 日期,股票代码,名称,收盘价,最高价,最低价,开盘价,前收盘,涨跌额,涨跌幅,换手率,成交量,成交金额,总市值,流通市值,成交笔数
+	// 2016 - 02 - 17, '000780,平庄能源,4.72,4.85,4.58,4.62,4.71,0.01,0.2123,1.6935,17177567,80265069.68,4787525849.28,4787525849.28,4832
+	char cYear[16], cMonth[16], cDay[16], cCode[16], cName[16], cClose[16], cHigh[16], cLow[16], cOpen[16], cLastClose[16], cChange[16], cPercent[16], cTurnover[16], cVolume[16], cAmount[32], cTotalMarketCap[16], cMarketCap[16], cQuantity[16];
+
+	char temp[256];
+	fgets(temp, 256, fp);
+	int i;
+	for (i = 0; i < NUM_DAYS_MAX; i++) {
+		if (!bIsMarketIndex)
+		{
+			if (fscanf_s(fp, "%[^-]-%[^-]-%[^,], '%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cCode, 16, cName, 16, cClose, 16, cHigh, 16, cLow, 16, cOpen, 16, cLastClose, 16, cChange, 16, cPercent, 16, cTurnover, 16, cVolume, 16, cAmount, 32, cTotalMarketCap, 16, cMarketCap, 16, cQuantity, 16) == EOF)
+				break;
+		}
+		else
+		{
+			if (fscanf_s(fp, "%[^-]-%[^-]-%[^,], '%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],,%[^,],%[^,],,,%[^\n]\n", cYear, 16, cMonth, 16, cDay, 16, cCode, 16, cName, 16, cClose, 16, cHigh, 16, cLow, 16, cOpen, 16, cLastClose, 16, cChange, 16, cPercent, 16, cVolume, 16, cAmount, 32, cQuantity, 16) == EOF)
+				break;
+		}
+			
+		m_strName = cName;
+		DATE[i] = strtol(cYear, NULL, 10) * 10000 + strtol(cMonth, NULL, 10) * 100 + strtol(cDay, NULL, 10);
+		OPEN[i] = strtod(cOpen, NULL);
+		HIGH[i] = strtod(cHigh, NULL);
+		LOW[i] = strtod(cLow, NULL);
+		CLOSE[i] = strtod(cClose, NULL);
+		VOLUME[i] = strtod(cVolume, NULL);
+		if (!bIsMarketIndex)
+			TURNOVER[i] = strtod(cTurnover, NULL);
 	}
 	fclose(fp);
 	m_nDaysTotal = i;
@@ -321,7 +459,7 @@ void CStockPrice::CalculateRSI(unsigned int nPeriod)
 		double RSi = 0;
 		double sumRise = 0;
 		double sumRiseFall = 0;
-		for (int j = 0; j < nPeriod - 1; j++)
+		for (unsigned int j = 0; j < nPeriod - 1; j++)
 		{
 			double diff = CLOSE[i + j] - CLOSE[i + j + 1];
 			if (diff > 0)
@@ -349,9 +487,9 @@ double* CStockPrice::GetMarketIndex()
 {
 	double* pMarketIndex = NULL;
 	if (MARKET == SHANGHAI)
-		pMarketIndex = MARKET_INDEX_SS;
+		pMarketIndex = g_MarketIndexShanghai.CLOSE;
 	else
-		pMarketIndex = MARKET_INDEX_SZ;
+		pMarketIndex = g_MarketIndexShenzhen.CLOSE;
 	return pMarketIndex;
 }
 

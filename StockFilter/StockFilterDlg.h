@@ -43,7 +43,7 @@ public:
 
 	BOOL InitStockList();
 	void UpdateScrollBar(int nPos, int nMax, int nPage);
-	CStockPrice* GetStockPrice(CString strInput);
+	bool GetStockPrice(CString strInput);
 	BOOL DrawStockGraph(CStockPrice* pStockPrice);
 	void UpdateDateText(int iLast, int nNum = NUM_LINE_DISPLAY);
 	CString m_strSearch;

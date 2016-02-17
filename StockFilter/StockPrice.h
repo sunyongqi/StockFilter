@@ -3,6 +3,8 @@
 #include <string>
 
 #define PRICEFILE_PATH "StockData\\"
+#define PRICEFILE_PATH_YAHOO "StockData\\Yahoo\\"
+#define PRICEFILE_PATH_163 "StockData\\163\\"
 #define NUM_DAYS_MAX		8000
 
 #define CROSS_THRESHOLD 0.005
@@ -24,8 +26,9 @@ typedef enum
 	SHENZHEN = 1,
 } eMarket;
 
-extern double MARKET_INDEX_SS[NUM_DAYS_MAX];
-extern double MARKET_INDEX_SZ[NUM_DAYS_MAX];
+
+//extern double MARKET_INDEX_SS[NUM_DAYS_MAX];
+//extern double MARKET_INDEX_SZ[NUM_DAYS_MAX];
 
 class CStockFilterDlg;
 class CStockGraph;
@@ -33,13 +36,16 @@ class CStockGraph;
 class CStockPrice
 {
 public:
-	CStockPrice(std::string strCode);
 	CStockPrice();
+	CStockPrice(std::string strCode);
 	~CStockPrice();
 
-	bool DownloadSingleStockPrices();
+	bool DownloadStockPrices();
+	bool DownloadStockPrices(std::string strCode);
 	int LoadStockData();
 	bool LoadPriceFile();
+	bool LoadFileYahoo();
+	bool LoadFile163();
 	void CalculateMA();
 	void CalculateMACD();
 	void CalculateKDJ(unsigned int nPeriod);
@@ -50,6 +56,8 @@ public:
 	double* GetMarketIndex();
 
 	static int DownloadAllStocksPrices();
+	static bool DownloadDataYahoo(std::string strCode);
+	static bool DownloadData163(std::string strCode);
 	static bool LoadMarketIndices();
 	static double MAX(double* pInput, unsigned int iStart, unsigned int iEnd, unsigned int nDaysTotal);
 	static double MIN(double* pInput, unsigned int iStart, unsigned int iEnd, unsigned int nDaysTotal);
@@ -66,7 +74,8 @@ protected:
 	double LOW[NUM_DAYS_MAX];
 	double CLOSE[NUM_DAYS_MAX];
 	double VOLUME[NUM_DAYS_MAX];
-	double ADJCLOSE[NUM_DAYS_MAX];
+	double TURNOVER[NUM_DAYS_MAX];
+	//double ADJCLOSE[NUM_DAYS_MAX];
 
 	double PRICE_MA5[NUM_DAYS_MAX];
 	double PRICE_MA10[NUM_DAYS_MAX];
@@ -96,6 +105,7 @@ protected:
 
 private:
 	std::string m_strCode;
+	std::string m_strName;
 	int m_nDaysTotal;
 
 	friend CStockGraph;
@@ -103,3 +113,5 @@ private:
 
 };
 
+extern CStockPrice g_MarketIndexShanghai;
+extern CStockPrice g_MarketIndexShenzhen;

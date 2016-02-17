@@ -159,7 +159,7 @@ BOOL CStockFilterDlg::OnInitDialog()
 	if (!CStockPrice::LoadMarketIndices())
 		return TRUE;
 
-	m_pStockPrice = NULL;
+	m_pStockPrice = new CStockPrice();
 	m_iFound = -1;
 	m_strStockInput = _T("600881");
 	UpdateData(FALSE);
@@ -269,14 +269,11 @@ void CStockFilterDlg::OnBnClickedGetprice()
 {
 	UpdateData(TRUE);
 
-	if (!m_pStockPrice)
-		delete m_pStockPrice;
-
-	m_pStockPrice = GetStockPrice(m_strStockInput);
-	DrawStockGraph(m_pStockPrice);
+	if (GetStockPrice(m_strStockInput))
+		DrawStockGraph(m_pStockPrice);
 }
 
-CStockPrice* CStockFilterDlg::GetStockPrice(CString strInput)
+bool CStockFilterDlg::GetStockPrice(CString strInput)
 {
 	m_iFound = -1;
 	std::string strCode;
@@ -317,17 +314,18 @@ CStockPrice* CStockFilterDlg::GetStockPrice(CString strInput)
 
 	UpdateData(FALSE);
 
-	CStockPrice* pStockPrice = new CStockPrice(strCode);
-	pStockPrice->DownloadSingleStockPrices();
-	return pStockPrice;
+	//CStockPrice* pStockPrice = new CStockPrice(strCode);
+	return m_pStockPrice->DownloadStockPrices(strCode);
 }
 
 BOOL CStockFilterDlg::DrawStockGraph(CStockPrice* pStockPrice)
 {
 	//CStockPrice* pStockPrice = new CStockPrice(strCode);
 	int nDays = pStockPrice->LoadStockData();
+	if (nDays <= 0)
+		return FALSE;
 	
-	UpdateScrollBar(nDays, nDays, NUM_LINE_DISPLAY);
+	UpdateScrollBar(nDays - 1, nDays - 1, NUM_LINE_DISPLAY);
 	UpdateDateText(0, NUM_LINE_DISPLAY);
 	
 
@@ -405,7 +403,7 @@ void CStockFilterDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	default:
 		return;
 	}
-	nNew = min(nMax - info.nPage, max(info.nMin, nNew));
+	nNew = min(nMax - (int)info.nPage, max(info.nMin, nNew));
 
 	int nPosOrg = info.nPos;
 	if (nNew != nPosOrg) {
@@ -426,7 +424,8 @@ void CStockFilterDlg::OnBnClickedFindpattern()
 		std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
 		std::string strCode = cv.to_bytes(it->first);
 		CStockPrice* pStockPrice = new CStockPrice(strCode);
-		pStockPrice->LoadStockData();
+		if (pStockPrice->LoadStockData())
+			continue;
 		int iFound = CStockPrice::GoldenCross(pStockPrice->DIF, pStockPrice->DEA, 0, 1);
 		if (iFound >= 0)
 		{
@@ -527,6 +526,6 @@ void CStockFilterDlg::OnLbnSelchangeStocklist()
 
 	CString strInput;
 	m_cStockList.GetText(m_cStockList.GetCurSel(), strInput);
-	m_pStockPrice = GetStockPrice(strInput);
-	DrawStockGraph(m_pStockPrice);
+	if (GetStockPrice(strInput))
+		DrawStockGraph(m_pStockPrice);
 }
