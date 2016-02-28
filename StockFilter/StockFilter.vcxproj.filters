@@ -450,6 +450,9 @@
     <ClInclude Include="3rdparty\curl\lib\vtls\vtls.h">
       <Filter>ソース ファイル\3rdparty\curl\lib\vtls</Filter>
     </ClInclude>
+    <ClInclude Include="3rdparty\curl\lib\curl_config.h">
+      <Filter>ソース ファイル\3rdparty\curl\lib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
